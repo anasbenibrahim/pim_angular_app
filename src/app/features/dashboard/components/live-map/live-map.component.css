@@ -1,0 +1,302 @@
+:host {
+  display: grid;
+  gap: 1rem;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.15rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.metric-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.metric-card h3 {
+  margin-top: 0.4rem;
+  font-size: 1.7rem;
+}
+
+.metric-card.blue h3 {
+  color: var(--accent-blue);
+}
+
+.metric-card.green h3 {
+  color: var(--accent-green);
+}
+
+.metric-card.yellow h3 {
+  color: var(--accent-orange);
+}
+
+.metric-card.red h3 {
+  color: var(--accent-red);
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: 3fr 1.1fr;
+  gap: 1rem;
+}
+
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+header {
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+header p {
+  margin: 0.2rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.controls {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+select {
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-full);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.refresh-btn {
+  border: 1px solid var(--border-input);
+  background: var(--bg-input);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.map-wrapper {
+  position: relative;
+}
+
+.map-canvas {
+  height: 460px;
+  width: 100%;
+  border-top: 1px solid var(--border-color);
+}
+
+:host ::ng-deep .leaflet-control-attribution {
+  background: color-mix(in srgb, var(--bg-card) 85%, transparent);
+  color: var(--text-secondary);
+}
+
+:host ::ng-deep .leaflet-popup-content-wrapper {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+:host ::ng-deep .leaflet-popup-tip {
+  background: var(--bg-card);
+}
+
+:host ::ng-deep .patient-marker-wrapper {
+  background: transparent;
+  border: none;
+}
+
+:host ::ng-deep .patient-marker {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: block;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.22);
+}
+
+:host ::ng-deep .patient-marker.active {
+  background: var(--accent-green);
+}
+
+:host ::ng-deep .patient-marker.monitoring {
+  background: var(--accent-blue);
+}
+
+:host ::ng-deep .patient-marker.inactive {
+  background: var(--accent-orange);
+}
+
+:host ::ng-deep .patient-marker.offline {
+  background: var(--accent-red);
+}
+
+:host ::ng-deep .leaflet-tooltip.patient-name-tooltip {
+  background: color-mix(in srgb, var(--bg-card) 92%, #0b1220);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+:host ::ng-deep .leaflet-tooltip.patient-name-tooltip::before {
+  border-top-color: var(--border-color);
+}
+
+:host ::ng-deep .leaflet-tooltip.patient-name-tooltip.active {
+  border-color: color-mix(in srgb, var(--accent-green) 45%, var(--border-color));
+}
+
+:host ::ng-deep .leaflet-tooltip.patient-name-tooltip.monitoring {
+  border-color: color-mix(in srgb, var(--accent-blue) 45%, var(--border-color));
+}
+
+:host ::ng-deep .leaflet-tooltip.patient-name-tooltip.inactive {
+  border-color: color-mix(in srgb, var(--accent-orange) 45%, var(--border-color));
+}
+
+:host ::ng-deep .leaflet-tooltip.patient-name-tooltip.offline {
+  border-color: color-mix(in srgb, var(--accent-red) 45%, var(--border-color));
+}
+
+.overlay {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  border-radius: var(--radius-md);
+  padding: 0.45rem 0.8rem;
+  font-size: 0.82rem;
+}
+
+.overlay.loading {
+  top: 10px;
+  background: color-mix(in srgb, var(--accent-blue-bg) 75%, var(--bg-card));
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.overlay.error {
+  bottom: 12px;
+  background: color-mix(in srgb, var(--accent-red-bg) 85%, var(--bg-card));
+  color: var(--text-primary);
+  border: 1px solid var(--accent-red);
+}
+
+.patients-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 460px;
+  overflow: auto;
+}
+
+.patients-panel li {
+  padding: 0.75rem 1.15rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.patients-panel li:last-child {
+  border-bottom: none;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+li.active .dot {
+  background: var(--accent-green);
+}
+
+li.monitoring .dot {
+  background: var(--accent-blue);
+}
+
+li.inactive .dot {
+  background: var(--accent-orange);
+}
+
+li.offline .dot {
+  background: var(--accent-red);
+}
+
+.patients-panel strong {
+  color: var(--text-primary);
+  font-size: 0.88rem;
+}
+
+.patients-panel p {
+  margin: 0.15rem 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.patients-panel small {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+@media (max-width: 1220px) {
+  .map-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .map-canvas,
+  .patients-panel ul {
+    height: 360px;
+    max-height: 360px;
+  }
+}

@@ -1,0 +1,75 @@
+<section class="metrics">
+  <article class="metric-card blue">
+    <p>Total patients</p>
+    <h3>{{ totalPatients }}</h3>
+  </article>
+  <article class="metric-card green">
+    <p>Patients localisés</p>
+    <h3>{{ locatedPatients }}</h3>
+  </article>
+  <article class="metric-card yellow">
+    <p>Patients actifs</p>
+    <h3>{{ activePatients }}</h3>
+  </article>
+  <article class="metric-card red">
+    <p>Hors ligne</p>
+    <h3>{{ offlinePatients }}</h3>
+  </article>
+</section>
+
+<section class="map-grid">
+  <article class="panel map-panel">
+    <header>
+      <div>
+        <h3>Localisation patients en temps réel</h3>
+        <p>
+          {{ liveConnected ? 'WebSocket actif (temps réel)' : 'Mode secours: synchronisation périodique' }}
+        </p>
+      </div>
+      <div class="controls">
+        <select [(ngModel)]="filter" (ngModelChange)="onFilterChange()" aria-label="Filtrer les marqueurs">
+          <option value="all">Tous</option>
+          <option value="active">Actifs</option>
+          <option value="monitoring">Surveillance</option>
+          <option value="inactive">Inactifs</option>
+          <option value="offline">Hors ligne</option>
+        </select>
+        <button type="button" class="refresh-btn" (click)="onManualRefresh()" [disabled]="loading">
+          <i class="ri-refresh-line"></i>
+          Rafraîchir
+        </button>
+      </div>
+    </header>
+
+    <div class="map-wrapper">
+      <div id="admin-live-map" class="map-canvas"></div>
+      <div class="overlay loading" *ngIf="loading">
+        <span>Chargement des positions...</span>
+      </div>
+      <div class="overlay error" *ngIf="errorMessage">
+        <span>{{ errorMessage }}</span>
+      </div>
+    </div>
+  </article>
+
+  <article class="panel patients-panel">
+    <header>
+      <h3>Patients affichés</h3>
+      <p>{{ filteredPatients.length }} patient(s)</p>
+    </header>
+
+    <ul>
+      <li
+        *ngFor="let patient of filteredPatients; trackBy: trackByPatientId"
+        [class]="patient.status"
+      >
+        <span class="dot"></span>
+        <div>
+          <strong>{{ patient.displayName }}</strong>
+          <p>{{ patient.email }}</p>
+          <small>{{ statusLabel(patient.status) }} - {{ patient.lastUpdateLabel }}</small>
+        </div>
+      </li>
+    </ul>
+  </article>
+</section>

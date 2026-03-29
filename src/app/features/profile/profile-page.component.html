@@ -1,0 +1,61 @@
+<section class="profile-shell">
+  <article class="profile-card" *ngIf="!isLoading; else loadingTemplate">
+    <header class="profile-header">
+      <div>
+        <h2>Mon profil</h2>
+        <p>Mise à jour des informations du compte connecté.</p>
+      </div>
+      <button type="button" class="ghost-btn" (click)="goBackToDashboard()">
+        <i class="ri-arrow-left-line"></i>
+        Dashboard
+      </button>
+    </header>
+
+    <div *ngIf="feedback" class="feedback" [class.success]="feedback.kind === 'success'" [class.error]="feedback.kind === 'error'">
+      {{ feedback.message }}
+    </div>
+
+    <div class="meta" *ngIf="profile">
+      <div>
+        <span>Email</span>
+        <strong>{{ profile.email }}</strong>
+      </div>
+      <div>
+        <span>Rôle</span>
+        <strong>{{ roleLabel() }}</strong>
+      </div>
+    </div>
+
+    <form [formGroup]="profileForm" class="form-grid" (ngSubmit)="onSubmit()">
+      <div class="field">
+        <label for="nom">Nom</label>
+        <input id="nom" type="text" formControlName="nom" />
+      </div>
+
+      <div class="field">
+        <label for="prenom">Prénom</label>
+        <input id="prenom" type="text" formControlName="prenom" />
+      </div>
+
+      <div class="field">
+        <label for="age">Âge</label>
+        <input id="age" type="number" min="1" max="150" formControlName="age" />
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="primary-btn" [disabled]="isSaving">
+          <i class="ri-save-line"></i>
+          {{ isSaving ? 'Mise à jour...' : 'Mettre à jour' }}
+        </button>
+      </div>
+    </form>
+  </article>
+</section>
+
+<ng-template #loadingTemplate>
+  <section class="profile-shell">
+    <article class="profile-card">
+      <p>Chargement du profil...</p>
+    </article>
+  </section>
+</ng-template>

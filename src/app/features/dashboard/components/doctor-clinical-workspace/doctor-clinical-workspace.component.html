@@ -1,0 +1,504 @@
+<section class="workspace-shell">
+  <header class="workspace-header panel">
+    <div>
+      <h3>Plan de soin personnalisé</h3>
+      <p>Affichez les patients acceptés, créez un plan de soin personnalisé et consultez le rapport de suivi.</p>
+    </div>
+    <button type="button" class="ghost-btn" (click)="refreshPatients()" [disabled]="isLoading">
+      Rafraîchir
+    </button>
+  </header>
+
+  <section *ngIf="errorMessage" class="message error">{{ errorMessage }}</section>
+  <section *ngIf="successMessage" class="message success">{{ successMessage }}</section>
+
+  <section class="panel" *ngIf="activeView === 'cards'">
+    <header class="panel-header">
+      <h4>Patients acceptés</h4>
+    </header>
+
+    <div class="panel-content">
+      <p class="empty" *ngIf="!isLoading && acceptedPatients.length === 0">
+        Aucun patient accepté n'est disponible pour ce doctor.
+      </p>
+
+      <div class="cards-grid" *ngIf="acceptedPatients.length > 0">
+        <article class="patient-card" *ngFor="let patient of acceptedPatients">
+          <div class="card-head">
+            <div>
+              <h5>{{ patient.name }}</h5>
+              <small>{{ patient.email }}</small>
+            </div>
+            <span class="count-pill">{{ patient.acceptedCount }} RDV acceptés</span>
+          </div>
+
+          <div class="card-details">
+            <p *ngIf="patient.phone"><strong>Téléphone:</strong> {{ patient.phone }}</p>
+            <p *ngIf="patient.latestAppointmentAt">
+              <strong>Dernier rendez-vous:</strong> {{ formatDateTime(patient.latestAppointmentAt) }}
+            </p>
+          </div>
+
+          <div class="card-actions">
+            <button type="button" class="primary-btn" (click)="openPlanBuilder(patient)">
+              Créer un plan de soin personnalisé
+            </button>
+            <button type="button" class="ghost-btn" (click)="openReport(patient)">
+              Voir le rapport
+            </button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" *ngIf="activeView === 'plan' && selectedPatient as patient">
+    <header class="panel-header panel-header-between">
+      <div>
+        <h4>{{ isEditingPlan ? 'Modifier un plan de soin' : 'Créer un plan de soin personnalisé' }}</h4>
+        <p class="subtitle">{{ patient.name }} · {{ patient.email }}</p>
+      </div>
+      <button type="button" class="ghost-btn" (click)="backToCards()">Retour à la liste</button>
+    </header>
+
+    <div class="panel-content form-layout">
+      <div class="draft-column">
+        <div class="draft-head">
+          <h5>Plans existants du patient</h5>
+          <button type="button" class="ghost-btn" (click)="startNewPlan()">Nouveau plan</button>
+        </div>
+        <p class="empty" *ngIf="patientCarePlans.length === 0">Aucun plan existant pour ce patient.</p>
+        <ul class="draft-list" *ngIf="patientCarePlans.length > 0">
+          <li *ngFor="let plan of patientCarePlans">
+            <div class="draft-head">
+              <strong>{{ plan.title }}</strong>
+              <button type="button" class="text-btn" (click)="editExistingPlan(plan)">Modifier le plan</button>
+            </div>
+            <p>{{ plan.weekStartDate | date:'dd/MM/yyyy' }} → {{ plan.weekEndDate | date:'dd/MM/yyyy' }}</p>
+            <small>{{ plan.items.length }} élément(s) · {{ plan.status }}</small>
+          </li>
+        </ul>
+      </div>
+
+      <div class="patient-summary">
+        <div class="summary-item">
+          <span>Patient</span>
+          <strong>{{ patient.name }}</strong>
+        </div>
+        <div class="summary-item">
+          <span>Rendez-vous acceptés</span>
+          <strong>{{ patient.acceptedCount }}</strong>
+        </div>
+        <div class="summary-item" *ngIf="patient.latestAppointmentAt">
+          <span>Dernier rendez-vous</span>
+          <strong>{{ formatDateTime(patient.latestAppointmentAt) }}</strong>
+        </div>
+      </div>
+
+      <div class="plan-form">
+        <label>
+          Title
+          <input type="text" [(ngModel)]="planTitle" placeholder="Plan de soin post-consultation" />
+        </label>
+
+        <div class="two-col">
+          <label>
+            Date début
+            <input type="date" [(ngModel)]="planStartDate" />
+          </label>
+          <label>
+            Date fin
+            <input type="date" [(ngModel)]="planEndDate" />
+          </label>
+        </div>
+
+        <div class="inline-actions">
+          <button type="button" class="ghost-btn" (click)="openTaskModal()">Créer task</button>
+          <button type="button" class="ghost-btn" (click)="openAppointmentModal()">Créer un rendez-vous</button>
+          <button type="button" class="primary-btn" (click)="submitPersonalizedPlan()" [disabled]="isSubmitting">
+            {{ isEditingPlan ? 'Modifier le plan' : 'Enregistrer le plan' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="draft-section">
+        <div class="draft-column">
+          <h5>Tâches ajoutées</h5>
+          <p class="empty" *ngIf="taskDrafts.length === 0">Aucune tâche ajoutée.</p>
+          <ul class="draft-list" *ngIf="taskDrafts.length > 0">
+            <li *ngFor="let task of taskDrafts; let index = index">
+              <div class="draft-head">
+                <strong>{{ task.title }}</strong>
+                <button type="button" class="text-btn" (click)="removeTaskDraft(index)">Retirer</button>
+              </div>
+              <p *ngIf="task.description">{{ task.description }}</p>
+              <small>Début: {{ formatDateTime(task.startAt) }}</small>
+              <small>Fin: {{ formatDateTime(task.endAt) }}</small>
+            </li>
+          </ul>
+        </div>
+
+        <div class="draft-column">
+          <h5>Rendez-vous ajoutés</h5>
+          <p class="empty" *ngIf="appointmentDrafts.length === 0">Aucun rendez-vous ajouté.</p>
+          <ul class="draft-list" *ngIf="appointmentDrafts.length > 0">
+            <li *ngFor="let appointment of appointmentDrafts; let index = index">
+              <div class="draft-head">
+                <strong>{{ visitTypeLabel(appointment.visitType) }}</strong>
+                <button type="button" class="text-btn" (click)="removeAppointmentDraft(index)">Retirer</button>
+              </div>
+              <p>{{ appointment.reason }}</p>
+              <small>{{ formatDateTime(appointment.appointmentDateTime) }}</small>
+              <small *ngIf="appointment.notes">{{ appointment.notes }}</small>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="appointments-section" *ngIf="selectedPatientAppointments.length > 0">
+        <h5>Historique des rendez-vous acceptés du patient</h5>
+        <ul class="appointment-history">
+          <li *ngFor="let appointment of selectedPatientAppointments">
+            <div class="draft-head">
+              <strong>{{ formatDateTime(appointment.appointmentDateTime) }}</strong>
+              <button
+                type="button"
+                class="text-btn"
+                (click)="addNotesForAppointment(appointment.id)"
+                [disabled]="isSubmitting"
+              >
+                Ajouter notes
+              </button>
+            </div>
+            <span>{{ visitTypeLabel(appointment.visitType) }}</span>
+            <p>{{ appointment.reason }}</p>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" *ngIf="activeView === 'report' && selectedPatient as patient">
+    <header class="panel-header panel-header-between">
+      <div>
+        <h4>Rapport patient</h4>
+        <p class="subtitle">{{ patient.name }} · {{ patient.email }}</p>
+      </div>
+      <button type="button" class="ghost-btn" (click)="backToCards()">Retour à la liste</button>
+    </header>
+
+    <div class="panel-content">
+      <p class="empty" *ngIf="isLoading">Chargement du rapport...</p>
+      <div class="report-layout" *ngIf="!isLoading && medicalReport as report">
+        <section class="report-block">
+          <h5>Coordonnées du patient</h5>
+          <ul class="simple-list">
+            <li>
+              <strong>Nom:</strong> {{ patient.name }}
+            </li>
+            <li>
+              <strong>Email:</strong> {{ patient.email }}
+            </li>
+            <li *ngIf="patient.phone">
+              <strong>Téléphone:</strong> {{ patient.phone }}
+            </li>
+            <li>
+              <strong>Rendez-vous acceptés:</strong> {{ patient.acceptedCount }}
+            </li>
+          </ul>
+        </section>
+
+        <section class="report-block">
+          <h5>Synthèse</h5>
+          <p>{{ report.clinicianSummary }}</p>
+        </section>
+
+        <section class="report-block">
+          <h5>Plan de soin complet</h5>
+          <ul class="simple-list" *ngIf="patientCarePlans.length > 0; else noCarePlans">
+            <li *ngFor="let plan of patientCarePlans">
+              <strong>{{ plan.title }}</strong>
+              <small>
+                {{ plan.weekStartDate | date:'dd/MM/yyyy' }} → {{ plan.weekEndDate | date:'dd/MM/yyyy' }}
+                · {{ carePlanStatusLabel(plan.status) }}
+              </small>
+              <ul class="simple-list" *ngIf="plan.items.length > 0; else noCarePlanItems">
+                <li *ngFor="let item of plan.items">
+                  <strong>{{ item.itemType }} · {{ item.title }}</strong>
+                  <p *ngIf="item.details">{{ item.details }}</p>
+                  <small *ngIf="item.dueAt">Échéance: {{ formatDateTime(item.dueAt) }}</small>
+                  <small>
+                    Statut: {{ item.completed ? 'Terminée' : 'En cours' }}
+                  </small>
+                </li>
+              </ul>
+              <ng-template #noCarePlanItems>
+                <p class="empty">Aucun élément détaillé dans ce plan.</p>
+              </ng-template>
+            </li>
+          </ul>
+          <ng-template #noCarePlans>
+            <p class="empty">Aucun plan de soin disponible.</p>
+          </ng-template>
+        </section>
+
+        <section class="report-block">
+          <h5>Rendez-vous du patient</h5>
+          <ul class="simple-list" *ngIf="report.sharedCarePlan.appointments.length > 0; else noSharedAppointments">
+            <li *ngFor="let appointment of report.sharedCarePlan.appointments">
+              <div class="draft-head">
+                <strong>{{ formatDateTime(appointment.appointmentDateTime) }}</strong>
+                <div class="inline-actions">
+                  <button
+                    type="button"
+                    class="text-btn"
+                    (click)="addNotesForAppointment(appointment.id, appointment.consultationSummary)"
+                    [disabled]="isSubmitting"
+                  >
+                    Ajouter notes
+                  </button>
+                  <button
+                    type="button"
+                    class="text-btn"
+                    (click)="deleteReportAppointment(appointment.id)"
+                    [disabled]="isSubmitting"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+              <p>{{ sharedVisitTypeLabel(appointment.visitType) }} · {{ appointmentStatusLabel(appointment.status) }}</p>
+              <p>{{ appointment.reason }}</p>
+              <small *ngIf="appointment.behavioralPrescription">
+                Ordonnance: {{ appointment.behavioralPrescription }}
+              </small>
+            </li>
+          </ul>
+          <ng-template #noSharedAppointments>
+            <p class="empty">Aucun rendez-vous dans le rapport.</p>
+          </ng-template>
+        </section>
+
+        <section class="report-block">
+          <h5>Check-ins intelligents</h5>
+          <ul class="simple-list" *ngIf="report.checkIns && report.checkIns.length > 0; else noCheckIns">
+            <li *ngFor="let checkin of report.checkIns">
+              <div class="draft-head">
+                <strong>Date: {{ checkin.checkInDate | date:'dd/MM/yyyy' }}</strong>
+                <span [ngStyle]="{'color': checkin.riskLevel === 'CRITICAL' ? 'red' : checkin.riskLevel === 'HIGH' ? 'orange' : 'inherit'}">
+                  Risque: {{ checkin.riskLevel }} ({{ checkin.riskScore | number:'1.0-2' }}%)
+                </span>
+              </div>
+              <ul class="simple-list">
+                <li>Motivation: {{ checkin.motivationScore }}/5 
+                  | Humeur: {{ checkin.moodScore }}/5 
+                  | Symptômes: {{ checkin.symptomScore }}/5 
+                  | Envies: {{ checkin.cravingScore }}/5</li>
+              </ul>
+              <p *ngIf="checkin.notes"><strong>Notes: </strong>{{ checkin.notes }}</p>
+            </li>
+          </ul>
+          <ng-template #noCheckIns>
+            <p class="empty">Aucun check-in disponible.</p>
+          </ng-template>
+        </section>
+
+        <section class="report-block">
+          <h5>Analyses de la Messagerie (via Hugging Face)</h5>
+          <ul class="simple-list" *ngIf="report.messageInsights && report.messageInsights.length > 0; else noInsights">
+            <li *ngFor="let insight of report.messageInsights">
+              <div class="draft-head">
+                <strong>Contexte détecté : {{ insight.context }}</strong>
+                <span class="badge">{{ insight.count }} message(s)</span>
+              </div>
+              <p>{{ insight.interpretation }}</p>
+              <small *ngIf="insight.lastDetectedAt">Dernière détection : {{ formatDateTime(insight.lastDetectedAt) }}</small>
+            </li>
+          </ul>
+          <ng-template #noInsights>
+            <p class="empty">Aucune analyse Hugging Face générée pour l'instant.</p>
+          </ng-template>
+        </section>
+
+        <section class="report-block">
+          <h5>Recommandations</h5>
+          <ul class="simple-list" *ngIf="report.recommendations.length > 0; else noRecommendations">
+            <li *ngFor="let recommendation of report.recommendations">{{ recommendation }}</li>
+          </ul>
+          <ng-template #noRecommendations>
+            <p class="empty">Aucune recommandation disponible.</p>
+          </ng-template>
+        </section>
+
+        <section class="report-block">
+          <h5>Consultations</h5>
+          <ul class="simple-list" *ngIf="report.consultationNotes.length > 0; else noConsultations">
+            <li *ngFor="let consultation of report.consultationNotes">
+              <div class="draft-head">
+                <strong>{{ formatDateTime(consultation.appointmentDateTime) }}</strong>
+                <button
+                  type="button"
+                  class="text-btn"
+                  (click)="deleteReportConsultation(consultation.consultationNoteId)"
+                  [disabled]="isSubmitting"
+                >
+                  Supprimer
+                </button>
+              </div>
+              <p>{{ consultation.consultationSummary }}</p>
+              <small *ngIf="consultation.behavioralPrescription">
+                Ordonnance: {{ consultation.behavioralPrescription }}
+              </small>
+            </li>
+          </ul>
+          <ng-template #noConsultations>
+            <p class="empty">Aucune consultation enregistrée.</p>
+          </ng-template>
+        </section>
+
+        <section class="report-block">
+          <h5>Tâches du patient</h5>
+          <ul class="simple-list" *ngIf="report.sharedCarePlan.tasks.length > 0; else noTasks">
+            <li *ngFor="let task of report.sharedCarePlan.tasks">
+              <div class="draft-head">
+                <strong>{{ task.title }}</strong>
+                <button
+                  type="button"
+                  class="text-btn"
+                  (click)="deleteReportTask(task.id)"
+                  [disabled]="isSubmitting"
+                >
+                  Supprimer
+                </button>
+              </div>
+              <p *ngIf="task.description">{{ task.description }}</p>
+              <small>Statut: {{ taskStatusLabel(task.status) }}</small>
+              <small *ngIf="task.dueAt">Échéance: {{ formatDateTime(task.dueAt) }}</small>
+            </li>
+          </ul>
+          <ng-template #noTasks>
+            <p class="empty">Aucune tâche disponible dans le rapport.</p>
+          </ng-template>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <div class="modal-backdrop" *ngIf="showTaskModal">
+    <section class="modal-card">
+      <header class="modal-header">
+        <h4>Créer task</h4>
+        <button type="button" class="text-btn" (click)="closeTaskModal()">Fermer</button>
+      </header>
+
+      <div class="modal-content">
+        <label>
+          Title
+          <input type="text" [(ngModel)]="taskTitle" placeholder="Titre de la tâche" />
+        </label>
+        <label>
+          Description
+          <textarea rows="3" [(ngModel)]="taskDescription" placeholder="Description de la tâche"></textarea>
+        </label>
+        <label>
+          Date début
+          <input type="datetime-local" [(ngModel)]="taskStartAt" />
+        </label>
+        <label>
+          Date fin
+          <input type="datetime-local" [(ngModel)]="taskEndAt" />
+        </label>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="ghost-btn" (click)="closeTaskModal()">Annuler</button>
+        <button type="button" class="primary-btn" (click)="saveTaskDraft()">Ajouter la task</button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="showAppointmentModal">
+    <section class="modal-card">
+      <header class="modal-header">
+        <h4>Créer un rendez-vous</h4>
+        <button type="button" class="text-btn" (click)="closeAppointmentModal()">Fermer</button>
+      </header>
+
+      <div class="modal-content">
+        <label>
+          Date rendez-vous
+          <input type="datetime-local" [(ngModel)]="appointmentDateTime" />
+        </label>
+
+        <label>
+          Type
+          <select [(ngModel)]="appointmentVisitType">
+            <option value="CABINET">Cabinet</option>
+            <option value="VIDEO">Téléconsultation</option>
+          </select>
+        </label>
+
+        <label>
+          Motif
+          <input type="text" [(ngModel)]="appointmentReason" placeholder="Motif du rendez-vous" />
+        </label>
+
+        <label>
+          Notes
+          <textarea rows="3" [(ngModel)]="appointmentNotes" placeholder="Notes complémentaires"></textarea>
+        </label>
+
+        <label>
+          Téléphone patient
+          <input type="text" [(ngModel)]="appointmentPatientPhone" placeholder="Téléphone du patient" />
+        </label>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="ghost-btn" (click)="closeAppointmentModal()">Annuler</button>
+        <button type="button" class="primary-btn" (click)="saveAppointmentDraft()">Ajouter le rendez-vous</button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="showConsultationNotesModal">
+    <section class="modal-card">
+      <header class="modal-header">
+        <h4>Ajouter notes de consultation</h4>
+        <button type="button" class="text-btn" (click)="closeConsultationNotesModal()">Fermer</button>
+      </header>
+
+      <div class="modal-content">
+        <label>
+          Notes de consultation
+          <textarea
+            rows="4"
+            [(ngModel)]="notesConsultationSummary"
+            placeholder="Résumé de consultation"
+          ></textarea>
+        </label>
+
+        <label>
+          Ordonnance comportementale (optionnel)
+          <textarea
+            rows="3"
+            [(ngModel)]="notesBehavioralPrescription"
+            placeholder="Ordonnance comportementale"
+          ></textarea>
+        </label>
+
+        <label>
+          Date de suivi (optionnel)
+          <input type="date" [(ngModel)]="notesFollowUpDate" />
+        </label>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" class="ghost-btn" (click)="closeConsultationNotesModal()">Annuler</button>
+        <button type="button" class="primary-btn" (click)="submitConsultationNotes()" [disabled]="isSubmitting">
+          Enregistrer les notes
+        </button>
+      </footer>
+    </section>
+  </div>
+</section>

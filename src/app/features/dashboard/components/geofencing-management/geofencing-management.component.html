@@ -1,0 +1,316 @@
+<section class="geo-shell">
+  <div class="messages">
+    <p class="message error" *ngIf="errorMessage">{{ errorMessage }}</p>
+    <p class="message success" *ngIf="successMessage">{{ successMessage }}</p>
+  </div>
+
+  <section class="panel builder-panel">
+    <header class="panel-header">
+      <div>
+        <h3>Zones geofencing</h3>
+        <p>Dessine des zones CIRCLE / POLYGON / MULTIPOLYGON puis crée des règles patient.</p>
+      </div>
+      <button type="button" class="btn secondary" (click)="refreshAll()" [disabled]="loading">
+        <i class="ri-refresh-line"></i>
+        Actualiser
+      </button>
+    </header>
+
+    <div class="builder-content">
+      <div class="builder-form">
+        <label>
+          <span>Nom zone</span>
+          <input type="text" [(ngModel)]="zoneName" placeholder="Ex: Quartier sensible centre" />
+        </label>
+
+        <div class="row two">
+          <label>
+            <span>Type</span>
+            <select [(ngModel)]="zoneType">
+              <option value="DANGER">DANGER</option>
+              <option value="CAUTION">CAUTION</option>
+              <option value="SAFE">SAFE</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Shape</span>
+            <select [(ngModel)]="drawShape" (ngModelChange)="onShapeChange()">
+              <option value="CIRCLE">CIRCLE</option>
+              <option value="POLYGON">POLYGON</option>
+              <option value="MULTIPOLYGON">MULTIPOLYGON</option>
+            </select>
+          </label>
+        </div>
+
+        <label *ngIf="drawShape === 'CIRCLE'">
+          <span>Rayon (mètres)</span>
+          <input type="number" min="1" [(ngModel)]="zoneRadiusMeters" />
+        </label>
+
+        <label>
+          <span>Description</span>
+          <textarea rows="2" [(ngModel)]="zoneDescription" placeholder="Optionnel"></textarea>
+        </label>
+
+        <label *ngIf="zoneType === 'DANGER'">
+          <span>Catégorie danger</span>
+          <select [(ngModel)]="zoneDangerCategory">
+            <option value="CUSTOM">CUSTOM</option>
+            <option value="BAR">BAR</option>
+            <option value="DEALER_AREA">DEALER_AREA</option>
+            <option value="OLD_TRIGGER_PLACE">OLD_TRIGGER_PLACE</option>
+          </select>
+        </label>
+
+        <div class="draw-help">
+          <p *ngIf="drawShape === 'CIRCLE'">Clique une fois sur la carte pour fixer le centre.</p>
+          <p *ngIf="drawShape === 'POLYGON'">Clique plusieurs points sur la carte (min 3).</p>
+          <p *ngIf="drawShape === 'MULTIPOLYGON'">
+            Clique les points d'un polygone (min 3), puis <strong>Ajouter polygone</strong>. Répète pour chaque polygone.
+          </p>
+        </div>
+
+        <div class="row actions">
+          <button
+            *ngIf="drawShape === 'MULTIPOLYGON'"
+            type="button"
+            class="btn secondary"
+            (click)="addCurrentPolygonToMultiPolygon()"
+          >
+            <i class="ri-add-circle-line"></i>
+            Ajouter polygone
+          </button>
+          <button type="button" class="btn secondary" (click)="undoLastPoint()">
+            <i class="ri-arrow-go-back-line"></i>
+            Annuler point
+          </button>
+          <button type="button" class="btn secondary" (click)="clearDrawing()">
+            <i class="ri-delete-bin-6-line"></i>
+            Effacer tracé
+          </button>
+        </div>
+
+        <div class="draft-list" *ngIf="drawShape === 'MULTIPOLYGON'">
+          <h4>Polygones ajoutés: {{ multiPolygonDraft.length }}</h4>
+          <ul>
+            <li *ngFor="let poly of multiPolygonDraft; let i = index">
+              <span>Polygone {{ i + 1 }} ({{ poly.length }} points)</span>
+              <button type="button" class="icon-btn" (click)="removeDraftPolygon(i)">
+                <i class="ri-close-line"></i>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div class="row actions">
+          <button type="button" class="btn primary" (click)="createZoneFromDrawing()" [disabled]="loading">
+            <i class="ri-map-pin-add-line"></i>
+            Créer zone
+          </button>
+        </div>
+      </div>
+
+      <div class="map-wrapper">
+        <div id="admin-geofencing-map" class="map-canvas"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel zones-panel">
+    <header class="panel-header">
+      <div>
+        <h3>Zones créées</h3>
+        <p>{{ zones.length }} zone(s)</p>
+      </div>
+    </header>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Type</th>
+            <th>Catégorie</th>
+            <th>Shape</th>
+            <th>Actif</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let zone of zones; trackBy: trackZone">
+            <td>
+              <strong>{{ zone.name }}</strong>
+              <small *ngIf="zone.description">{{ zone.description }}</small>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="zone.type.toLowerCase()">{{ zone.type }}</span>
+            </td>
+            <td>{{ zone.dangerCategory ?? '-' }}</td>
+            <td>{{ zone.shapeType }}</td>
+            <td>{{ zone.isActive ? 'Oui' : 'Non' }}</td>
+            <td>
+              <button type="button" class="btn danger ghost" (click)="deleteZone(zone.id)">
+                <i class="ri-delete-bin-line"></i>
+                Supprimer
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="zones.length === 0">
+            <td colspan="6" class="empty">Aucune zone pour le moment.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rules-events-grid">
+    <article class="panel rules-panel">
+      <header class="panel-header">
+        <div>
+          <h3>Règles patient-zone</h3>
+          <p>Associe une zone à un patient avec sévérité et paramètres anti-faux-positifs.</p>
+        </div>
+      </header>
+
+      <div class="rules-content">
+        <label>
+          <span>Patient</span>
+          <select
+            [ngModel]="selectedPatientId"
+            (ngModelChange)="onPatientChange($event?.toString() ?? '')"
+          >
+            <option [ngValue]="null">Sélectionner patient</option>
+            <option *ngFor="let p of patients" [ngValue]="p.id">
+              {{ p.prenom }} {{ p.nom }} ({{ p.email }})
+            </option>
+          </select>
+        </label>
+
+        <div class="row two">
+          <label>
+            <span>Zone</span>
+            <select [ngModel]="ruleZoneId" (ngModelChange)="ruleZoneId = $event">
+              <option [ngValue]="null">Sélectionner zone</option>
+              <option *ngFor="let zone of zones" [ngValue]="zone.id">{{ zone.name }} ({{ zone.shapeType }})</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Sévérité</span>
+            <select [(ngModel)]="ruleSeverity">
+              <option value="LOW">LOW</option>
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="HIGH">HIGH</option>
+              <option value="CRITICAL">CRITICAL</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row three">
+          <label>
+            <span>Min dwell (sec)</span>
+            <input type="number" min="0" [(ngModel)]="ruleMinDwellSeconds" />
+          </label>
+          <label>
+            <span>Cooldown (sec)</span>
+            <input type="number" min="0" [(ngModel)]="ruleCooldownSeconds" />
+          </label>
+          <label>
+            <span>Accuracy max (m)</span>
+            <input type="number" min="1" [(ngModel)]="ruleMaxAccuracyMeters" />
+          </label>
+          <label>
+            <span>Enter radius (m)</span>
+            <input type="number" min="1" [(ngModel)]="ruleEnterRadiusMeters" />
+          </label>
+        </div>
+
+        <label>
+          <span>Exit radius (m)</span>
+          <input type="number" min="1" [(ngModel)]="ruleExitRadiusMeters" />
+        </label>
+
+        <div class="row toggles">
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="ruleNotifyOnEnter" />
+            <span>Notifier sur entrée</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="ruleNotifyOnExit" />
+            <span>Notifier sur sortie</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="ruleNotifyFamily" />
+            <span>Notifier famille</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="ruleNotifyVolunteer" />
+            <span>Notifier volontaire</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="ruleNotifyAdmin" />
+            <span>Notifier admin</span>
+          </label>
+        </div>
+
+        <div class="row actions">
+          <button type="button" class="btn primary" (click)="createPatientRule()" [disabled]="loading || selectedPatientId === null">
+            <i class="ri-shield-check-line"></i>
+            {{ editingRuleId === null ? 'Créer règle' : 'Mettre à jour règle' }}
+          </button>
+          <button type="button" class="btn secondary" *ngIf="editingRuleId !== null" (click)="cancelEditRule()">
+            Annuler édition
+          </button>
+        </div>
+
+        <ul class="rule-list">
+          <li *ngFor="let rule of patientRules; trackBy: trackRule">
+            <div>
+              <strong>{{ rule.zoneName }}</strong>
+              <p>{{ rule.severity }} • dwell {{ rule.dwellTimeSec ?? rule.minDwellSeconds }}s • cooldown {{ rule.cooldownSec ?? 0 }}s • accuracy {{ rule.maxAccuracyMeters ?? 'default' }}m</p>
+              <small>Enter: {{ (rule.notifyOnEnter ?? true) ? 'on' : 'off' }} • Exit: {{ (rule.notifyOnExit ?? true) ? 'on' : 'off' }}</small>
+            </div>
+            <div class="event-actions">
+              <button type="button" class="btn secondary ghost" (click)="startEditRule(rule)">Modifier</button>
+              <button type="button" class="btn danger ghost" (click)="deleteRule(rule)">Supprimer</button>
+            </div>
+          </li>
+          <li *ngIf="selectedPatientId !== null && patientRules.length === 0" class="empty">Aucune règle pour ce patient.</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="panel events-panel">
+      <header class="panel-header">
+        <div>
+          <h3>Alertes zones</h3>
+          <p>{{ events.length }} événement(s) non résolu(s)</p>
+        </div>
+        <button type="button" class="btn secondary" (click)="refreshEvents()">
+          <i class="ri-refresh-line"></i>
+          Actualiser
+        </button>
+      </header>
+
+      <div class="presence" *ngIf="selectedEventPresence">
+        {{ selectedEventPresence }}
+      </div>
+
+      <ul class="event-list">
+        <li *ngFor="let event of events; trackBy: trackEvent">
+          <div>
+            <strong>{{ event.patientPrenom }} {{ event.patientNom }} - {{ event.eventType }}</strong>
+            <p>{{ event.zoneName }} • {{ event.severity }} • {{ event.timestamp | date:'short' }}</p>
+            <small>{{ event.lat | number:'1.5-5' }}, {{ event.lon | number:'1.5-5' }}</small>
+          </div>
+          <div class="event-actions">
+            <button type="button" class="btn secondary ghost" (click)="checkPresence(event)">Re-check</button>
+            <button type="button" class="btn primary ghost" (click)="resolveEvent(event)">Résoudre</button>
+          </div>
+        </li>
+        <li *ngIf="events.length === 0" class="empty">Aucune alerte active.</li>
+      </ul>
+    </article>
+  </section>
+</section>

@@ -1,0 +1,115 @@
+<!-- ======== KPI STAT CARDS ======== -->
+<section class="kpi-grid">
+  <article class="kpi-card" *ngFor="let card of kpis; let i = index" [style.animation-delay]="(i * 80) + 'ms'">
+    <div class="kpi-icon" [style.background]="card.iconBg">
+      <i [class]="card.icon" [style.color]="card.iconColor"></i>
+    </div>
+    <div class="kpi-content">
+      <h3 class="kpi-value">{{ card.value }}</h3>
+      <p class="kpi-title">{{ card.title }}</p>
+    </div>
+    <span class="kpi-trend" [class.up]="card.trendUp" [class.down]="!card.trendUp">
+      {{ card.trend }}
+    </span>
+  </article>
+</section>
+
+<section class="activity-panel" *ngIf="isLoading || lastUpdated">
+  <div class="activity-item success">
+    <div class="activity-icon success">
+      <i class="ri-refresh-line"></i>
+    </div>
+    <div class="activity-content">
+      <h4>Données statistiques synchronisées</h4>
+      <p *ngIf="isLoading">Mise à jour en cours...</p>
+      <p *ngIf="!isLoading && lastUpdated">Dernière mise à jour: {{ lastUpdated }}</p>
+    </div>
+    <button class="view-all-btn" type="button" (click)="manualRefresh()" [disabled]="isLoading">
+      Rafraîchir
+      <i class="ri-refresh-line"></i>
+    </button>
+  </div>
+</section>
+
+<section *ngIf="statsError" class="activity-panel">
+  <div class="activity-item warning">
+    <div class="activity-icon warning">
+      <i class="ri-error-warning-line"></i>
+    </div>
+    <div class="activity-content">
+      <h4>Statistiques indisponibles</h4>
+      <p>{{ statsError }}</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======== CHARTS ROW ======== -->
+<section class="charts-row">
+  <!-- Donut Chart -->
+  <div class="chart-card donut-card">
+    <header class="chart-header">
+      <h3>Current Statistic</h3>
+    </header>
+    <div class="donut-container">
+      <svg class="donut-svg" viewBox="0 0 120 120">
+        <circle *ngFor="let seg of donutData; let i = index" cx="60" cy="60" r="45" fill="none"
+          [attr.stroke]="seg.color" stroke-width="12" [attr.stroke-dasharray]="getDonutDashArray(seg.percentage)"
+          [attr.stroke-dashoffset]="getDonutOffset(i)" stroke-linecap="round" class="donut-segment"
+          [style.animation-delay]="(i * 200) + 'ms'" />
+      </svg>
+    </div>
+    <div class="donut-legend">
+      <div class="legend-item" *ngFor="let seg of donutData">
+        <span class="legend-dot" [style.background]="seg.color"></span>
+        <span class="legend-label">{{ seg.label }}: {{ seg.count }} ({{ seg.percentage }}%)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bar Chart -->
+  <div class="chart-card bar-card">
+    <header class="chart-header">
+      <h3>Market Overview</h3>
+      <div class="chart-actions">
+        <span class="chart-period">Hebdomadaire (2024)</span>
+      </div>
+    </header>
+    <div class="bar-chart">
+      <div class="bar-group" *ngFor="let point of chartData">
+        <div class="bar-wrapper">
+          <div class="bar" [style.height.%]="barHeight(point.value)"></div>
+          <div class="bar-tooltip">{{ point.value }}</div>
+        </div>
+        <span class="bar-label">{{ point.label }}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======== ACTIVITY PANEL ======== -->
+<section class="activity-panel">
+  <header class="panel-header">
+    <div>
+      <h3>Activité récente</h3>
+      <p>Événements critiques et validation des opérations.</p>
+    </div>
+    <button class="view-all-btn">
+      Voir tout
+      <i class="ri-arrow-right-s-line"></i>
+    </button>
+  </header>
+
+  <div class="activity-list">
+    <div class="activity-item" *ngFor="let item of activities; let i = index" [class]="item.status"
+      [style.animation-delay]="(i * 60) + 'ms'">
+      <div class="activity-icon" [ngClass]="item.status">
+        <i [class]="item.icon"></i>
+      </div>
+      <div class="activity-content">
+        <h4>{{ item.title }}</h4>
+        <p>{{ item.detail }}</p>
+      </div>
+      <span class="activity-time">{{ item.time }}</span>
+    </div>
+  </div>
+</section>

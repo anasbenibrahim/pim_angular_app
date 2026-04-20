@@ -1,0 +1,127 @@
+<section class="validation-header">
+  <div>
+    <p *ngIf="isLoading">Chargement des demandes doctors...</p>
+    <p *ngIf="!isLoading">Validation doctor avec création automatique de compte après approbation.</p>
+  </div>
+
+  <div class="header-actions">
+    <select [value]="statusFilter" (change)="setStatusFilter(($any($event.target).value))" [disabled]="isLoading || isActionLoading">
+      <option *ngFor="let option of statusOptions" [value]="option.value">{{ option.label }}</option>
+    </select>
+    <button type="button" (click)="refresh()" [disabled]="isLoading || isActionLoading">Rafraîchir</button>
+  </div>
+</section>
+
+<section *ngIf="errorMessage" class="message error">{{ errorMessage }}</section>
+<section *ngIf="successMessage" class="message success">{{ successMessage }}</section>
+
+<section class="validation-grid">
+  <article class="panel">
+    <header>
+      <h3>Demandes doctors</h3>
+      <p>{{ filteredRequests.length }} affichée(s) / {{ requests.length }} total</p>
+    </header>
+
+    <ul class="request-list" *ngIf="filteredRequests.length > 0; else noRequests">
+      <li
+        *ngFor="let request of filteredRequests"
+        [class.active]="selectedRequestId === request.signupRequestId"
+        (click)="selectRequest(request.signupRequestId)"
+      >
+        <div class="request-main">
+          <div class="top-row">
+            <h4>{{ request.prenom }} {{ request.nom }}</h4>
+            <span [class]="statusClass(request.status)">{{ statusLabel(request.status) }}</span>
+          </div>
+          <p>{{ request.email }}</p>
+          <small>{{ request.specialty }} | Ordre: {{ request.registrationNumber }}</small>
+          <small>Exp: {{ request.yearsExperience ?? 0 }} ans | Tél: {{ request.phone || '-' }}</small>
+        </div>
+      </li>
+    </ul>
+
+    <ng-template #noRequests>
+      <div class="empty-state">
+        <p>Aucune demande doctor pour le filtre sélectionné.</p>
+      </div>
+    </ng-template>
+  </article>
+
+  <article class="panel" *ngIf="selectedRequest as selected; else noSelection">
+    <header>
+      <h3>Dossier doctor</h3>
+      <p>{{ selected.prenom }} {{ selected.nom }} | {{ statusLabel(selected.status) }}</p>
+    </header>
+
+    <section class="identity-grid">
+      <div class="identity-item">
+        <span>Email</span>
+        <strong>{{ selected.email }}</strong>
+      </div>
+      <div class="identity-item">
+        <span>Téléphone</span>
+        <strong>{{ selected.phone || '-' }}</strong>
+      </div>
+      <div class="identity-item">
+        <span>Spécialité</span>
+        <strong>{{ selected.specialty }}</strong>
+      </div>
+      <div class="identity-item">
+        <span>Inscription</span>
+        <strong>{{ selected.registrationNumber }}</strong>
+      </div>
+      <div class="identity-item">
+        <span>Expérience</span>
+        <strong>{{ selected.yearsExperience ?? 0 }} ans</strong>
+      </div>
+      <div class="identity-item">
+        <span>Statut</span>
+        <strong>{{ statusLabel(selected.status) }}</strong>
+      </div>
+    </section>
+
+    <section class="description-block" *ngIf="selected.experienceDetails">
+      <h4>Description du travail</h4>
+      <p>{{ selected.experienceDetails }}</p>
+    </section>
+
+    <section class="documents-grid" *ngIf="selected.diplomas.length > 0; else noDiplomas">
+      <a class="doc-link" *ngFor="let diploma of selected.diplomas" [href]="resolveDiplomaUrl(diploma)" target="_blank" rel="noopener noreferrer">
+        <i class="ri-file-paper-2-line"></i>
+        <span>Voir Diplome</span>
+      </a>
+    </section>
+    <ng-template #noDiplomas>
+      <p class="empty-docs">Aucun diplôme fourni.</p>
+    </ng-template>
+
+    <div class="reject-block" *ngIf="selected.status === 'PENDING'">
+      <label for="doctor-reject-reason">Motif de rejet</label>
+      <textarea id="doctor-reject-reason" rows="3" [(ngModel)]="rejectReason" [disabled]="isActionLoading"></textarea>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="approve" (click)="approveSelected()" [disabled]="isActionLoading || selected.status !== 'PENDING'">
+        Approuver
+      </button>
+      <button type="button" class="reject" (click)="rejectSelected()" [disabled]="isActionLoading || selected.status !== 'PENDING'">
+        Rejeter
+      </button>
+      <button type="button" class="delete-request" (click)="deleteSelected()" [disabled]="isActionLoading">
+        Supprimer demande
+      </button>
+    </div>
+  </article>
+
+  <ng-template #noSelection>
+    <article class="panel empty-selection">
+      <header>
+        <h3>Dossier doctor</h3>
+        <p>Aucune demande sélectionnée</p>
+      </header>
+      <div class="empty-state">
+        <p>Quand une demande est disponible, ses détails apparaîtront ici.</p>
+      </div>
+    </article>
+  </ng-template>
+</section>

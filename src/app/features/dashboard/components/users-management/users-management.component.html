@@ -1,0 +1,249 @@
+<section class="panel">
+  <div class="toast-host" *ngIf="toast as toastMessage">
+    <div class="toast" [ngClass]="'toast-' + toastMessage.kind" role="status" aria-live="polite">
+      <span>{{ toastMessage.text }}</span>
+      <button type="button" class="toast-close" (click)="toast = null" aria-label="Fermer notification">×</button>
+    </div>
+  </div>
+
+  <header class="panel-header">
+    <div>
+      <h3>Liste des utilisateurs</h3>
+      <p>{{ filteredUsers.length }} résultat(s) filtré(s)</p>
+      <small *ngIf="isLoading">Chargement...</small>
+      <small *ngIf="errorMessage" class="error-text">{{ errorMessage }}</small>
+      <small *ngIf="successMessage" class="success-text">{{ successMessage }}</small>
+    </div>
+
+    <div class="filters">
+      <button type="button" class="add-btn" (click)="manualRefresh()" [disabled]="isLoading || isActionLoading">
+        Rafraîchir
+      </button>
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        placeholder="Rechercher un utilisateur"
+        aria-label="Recherche"
+      />
+
+      <select [(ngModel)]="selectedType" aria-label="Type utilisateur">
+        <option value="Tous">Tous les types</option>
+        <option value="Patient">Patients</option>
+        <option value="Famille">Famille</option>
+        <option value="Volontaire">Volontaires</option>
+        <option value="Doctor">Doctors</option>
+      </select>
+
+      <button type="button" class="add-btn" (click)="toggleCreateForm()" [disabled]="isActionLoading">
+        {{ showCreateForm ? 'Fermer' : 'Ajouter' }}
+      </button>
+    </div>
+  </header>
+
+  <section class="crud-form">
+    <h4>Statistiques utilisateurs</h4>
+    <div class="crud-grid">
+      <input type="text" [value]="'Total: ' + totalUsers" readonly />
+      <input type="text" [value]="'Patients: ' + totalPatients" readonly />
+      <input type="text" [value]="'Familles: ' + totalFamilies" readonly />
+      <input type="text" [value]="'Volontaires: ' + totalVolunteers" readonly />
+      <input type="text" [value]="'Doctors: ' + totalDoctors" readonly />
+    </div>
+  </section>
+
+  <section class="crud-form" *ngIf="showCreateForm">
+    <h4>Créer un utilisateur</h4>
+    <div class="crud-grid">
+      <input type="email" [(ngModel)]="createModel.email" placeholder="Email" />
+      <input type="password" [(ngModel)]="createModel.password" placeholder="Mot de passe" />
+      <input type="text" [(ngModel)]="createModel.prenom" placeholder="Prénom" />
+      <input type="text" [(ngModel)]="createModel.nom" placeholder="Nom" />
+      <select [(ngModel)]="createModel.role" aria-label="Role">
+        <option value="VOLONTAIRE">Volontaire</option>
+        <option value="PATIENT">Patient</option>
+        <option value="FAMILY_MEMBER">Famille</option>
+      </select>
+      <input type="number" min="1" max="150" [(ngModel)]="createModel.age" placeholder="Âge" />
+
+      <input
+        *ngIf="isCreateFamilyMember"
+        type="text"
+        [(ngModel)]="createModel.referralKey"
+        placeholder="Referral key patient"
+      />
+
+      <input *ngIf="isCreatePatient" type="date" [(ngModel)]="createModel.dateNaissance" />
+      <input *ngIf="isCreatePatient" type="date" [(ngModel)]="createModel.sobrietyDate" />
+      <select *ngIf="isCreatePatient" [(ngModel)]="createModel.addiction" aria-label="Addiction">
+        <option *ngFor="let addictionType of addictionTypes" [value]="addictionType">{{ addictionType }}</option>
+      </select>
+    </div>
+
+    <div class="specialties-block" *ngIf="isCreateVolunteer">
+      <label>Spécialités addiction (volontaire)</label>
+      <div class="specialties-grid">
+        <button
+          *ngFor="let addictionType of addictionTypes"
+          type="button"
+          class="specialty-chip"
+          [class.selected]="isCreateSpecialtySelected(addictionType)"
+          (click)="toggleCreateVolunteerSpecialty(addictionType)"
+          [disabled]="isActionLoading"
+        >
+          {{ addictionLabel(addictionType) }}
+        </button>
+      </div>
+      <small>Sélection multiple autorisée. Utilisé pour l’assignation n8n automatique par type d’addiction.</small>
+    </div>
+
+    <div class="crud-actions">
+      <button type="button" class="add-btn" (click)="createUser()" [disabled]="isActionLoading">
+        {{ isActionLoading ? 'Enregistrement...' : 'Créer' }}
+      </button>
+    </div>
+  </section>
+
+  <section class="crud-form edit" *ngIf="editingUserId !== null">
+    <h4>Modifier utilisateur #{{ editingUserId }}</h4>
+    <div class="crud-grid">
+      <input type="text" [(ngModel)]="editModel.prenom" placeholder="Prénom" />
+      <input type="text" [(ngModel)]="editModel.nom" placeholder="Nom" />
+      <input type="number" min="1" max="150" [(ngModel)]="editModel.age" placeholder="Âge" />
+    </div>
+    <div class="specialties-block" *ngIf="isEditingVolunteer">
+      <label>Spécialités addiction (volontaire)</label>
+      <div class="specialties-grid">
+        <button
+          *ngFor="let addictionType of addictionTypes"
+          type="button"
+          class="specialty-chip"
+          [class.selected]="isEditSpecialtySelected(addictionType)"
+          (click)="toggleEditVolunteerSpecialty(addictionType)"
+          [disabled]="isActionLoading"
+        >
+          {{ addictionLabel(addictionType) }}
+        </button>
+      </div>
+      <small>Ces spécialités sont lues automatiquement par le workflow n8n d’assignation.</small>
+    </div>
+    <div class="crud-actions">
+      <button type="button" class="add-btn" (click)="updateUser()" [disabled]="isActionLoading">
+        {{ isActionLoading ? 'Mise à jour...' : 'Sauvegarder' }}
+      </button>
+      <button type="button" class="cancel-btn" (click)="cancelEdit()" [disabled]="isActionLoading">Annuler</button>
+    </div>
+  </section>
+
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Utilisateur</th>
+          <th>Type</th>
+          <th>Statut</th>
+          <th>Date d'inscription</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let user of filteredUsers; trackBy: trackById">
+          <td>
+            <div class="user-cell">
+              <span class="avatar">{{ user.initials }}</span>
+              <div>
+                <strong>{{ user.name }}</strong>
+                <small>{{ user.email }}</small>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="typeBadgeClass(user.type)">{{ user.type }}</span>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="statusBadgeClass(user.status)">{{ user.status }}</span>
+          </td>
+          <td>{{ user.registeredAt }}</td>
+          <td>
+            <div class="actions">
+              <button type="button" class="icon-btn" aria-label="Modifier" (click)="startEdit(user)" [disabled]="isActionLoading">
+                <i class="ri-edit-line"></i>
+              </button>
+              <button type="button" class="icon-btn" aria-label="Voir" (click)="viewUser(user)" [disabled]="isActionLoading">
+                <i class="ri-eye-line"></i>
+              </button>
+              <button type="button" class="icon-btn danger" aria-label="Supprimer" (click)="deleteUser(user)" [disabled]="isActionLoading">
+                <i class="ri-delete-bin-line"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel assignments-panel">
+  <header class="panel-header">
+    <div>
+      <h3>Volontaires et leurs patients</h3>
+      <p>{{ volunteerAssignments.length }} volontaire(s) • {{ totalAssignedPatients }} patient(s) assigné(s)</p>
+      <small *ngIf="assignmentsLoading">Chargement des assignations...</small>
+      <small *ngIf="assignmentErrorMessage" class="error-text">{{ assignmentErrorMessage }}</small>
+    </div>
+  </header>
+
+  <div class="assignments-grid" *ngIf="volunteerAssignments.length > 0; else noVolunteerData">
+    <article class="assignment-card" *ngFor="let group of volunteerAssignments">
+      <div class="assignment-card-header">
+        <div class="user-cell">
+          <span class="avatar">{{ group.volunteer.initials }}</span>
+          <div>
+            <strong>{{ group.volunteer.name }}</strong>
+            <small>{{ group.volunteer.email }}</small>
+          </div>
+        </div>
+        <span class="badge type-volunteer">{{ group.assignments.length }} patient(s)</span>
+      </div>
+
+      <ul class="assignment-list" *ngIf="group.assignments.length > 0; else noPatientsAssigned">
+        <li *ngFor="let assignment of group.assignments">
+          <div>
+            <strong>{{ assignment.patientPrenom }} {{ assignment.patientNom }}</strong>
+            <small>{{ assignment.patientEmail }}</small>
+          </div>
+          <small class="assigned-date">Assigné le {{ formatAssignmentDate(assignment.assignedAt) }}</small>
+        </li>
+      </ul>
+
+      <ng-template #noPatientsAssigned>
+        <p class="empty-inline">Aucun patient assigné pour ce volontaire.</p>
+      </ng-template>
+    </article>
+  </div>
+
+  <ng-template #noVolunteerData>
+    <p class="empty-inline">Aucun volontaire trouvé pour afficher les assignations.</p>
+  </ng-template>
+</section>
+
+<section class="modal-backdrop" *ngIf="deleteCandidate as userToDelete">
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+    <header class="confirm-modal-header">
+      <h4 id="delete-modal-title">Confirmer la suppression</h4>
+    </header>
+
+    <div class="confirm-modal-body">
+      <p>Supprimer <strong>{{ userToDelete.name }}</strong> ?</p>
+      <small>{{ userToDelete.email }} • {{ userToDelete.type }}</small>
+      <p class="warning-text">Cette action est irréversible.</p>
+    </div>
+
+    <div class="confirm-modal-actions">
+      <button type="button" class="cancel-btn" (click)="cancelDelete()" [disabled]="isActionLoading">Annuler</button>
+      <button type="button" class="danger-btn" (click)="confirmDelete()" [disabled]="isActionLoading">
+        {{ isActionLoading ? 'Suppression...' : 'Supprimer' }}
+      </button>
+    </div>
+  </div>
+</section>

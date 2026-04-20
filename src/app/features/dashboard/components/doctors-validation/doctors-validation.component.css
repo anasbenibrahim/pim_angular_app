@@ -1,0 +1,245 @@
+:host {
+  display: block;
+}
+
+.validation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  margin-bottom: 0.8rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.validation-header p {
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.validation-header select,
+.validation-header button,
+textarea {
+  border: 1px solid var(--border-input);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  padding: 0.45rem 0.75rem;
+}
+
+.validation-header button,
+.actions button {
+  cursor: pointer;
+}
+
+.message {
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.8rem;
+  font-size: 0.82rem;
+}
+
+.message.error {
+  background: color-mix(in srgb, var(--accent-red-bg) 85%, var(--bg-card));
+  border: 1px solid var(--accent-red);
+}
+
+.message.success {
+  background: color-mix(in srgb, var(--accent-green-bg) 85%, var(--bg-card));
+  border: 1px solid var(--accent-green);
+}
+
+.validation-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+header {
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-heading);
+}
+
+header p {
+  margin: 0.2rem 0 0;
+  color: var(--text-secondary);
+}
+
+.request-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 650px;
+  overflow: auto;
+}
+
+.request-list li {
+  padding: 0.9rem 1.15rem;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+}
+
+.request-list li.active {
+  background: var(--brand-primary-light);
+  border-left: 3px solid var(--brand-primary);
+}
+
+.request-main {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.request-list h4,
+.request-list p,
+.request-list small {
+  margin: 0;
+}
+
+.request-list p {
+  color: var(--text-secondary);
+}
+
+.request-list small {
+  color: var(--text-muted);
+}
+
+.status {
+  font-size: 0.74rem;
+  border-radius: var(--radius-full);
+  padding: 0.2rem 0.55rem;
+  border: 1px solid transparent;
+}
+
+.status-pending {
+  background: var(--accent-blue-bg);
+  color: var(--accent-blue);
+}
+
+.status-approved {
+  background: var(--accent-green-bg);
+  color: var(--accent-green);
+}
+
+.status-rejected,
+.status-error {
+  background: var(--accent-red-bg);
+  color: var(--accent-red);
+}
+
+.identity-grid {
+  padding: 1rem 1.1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.identity-item span {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.identity-item strong {
+  color: var(--text-primary);
+}
+
+.description-block {
+  padding: 0 1.1rem 1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.description-block h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-heading);
+}
+
+.description-block p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.documents-grid {
+  padding: 0 1.1rem 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.doc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  text-decoration: none;
+  color: var(--brand-primary);
+}
+
+.reject-block {
+  padding: 0 1.1rem 0.8rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.actions {
+  padding: 0 1.1rem 1.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.actions button {
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.85rem;
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
+
+.actions .approve {
+  border-color: color-mix(in srgb, var(--accent-green) 45%, var(--border-input));
+}
+
+.actions .reject,
+.actions .delete-request {
+  border-color: color-mix(in srgb, var(--accent-red) 45%, var(--border-input));
+}
+
+.empty-state,
+.empty-docs {
+  padding: 1rem 1.1rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 1050px) {
+  .validation-grid {
+    grid-template-columns: 1fr;
+  }
+}

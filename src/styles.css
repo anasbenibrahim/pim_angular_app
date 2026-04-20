@@ -1,0 +1,285 @@
+/* ========================================
+   BOLTZ-INSPIRED DESIGN SYSTEM
+   Dark/Light mode with CSS custom properties
+   ======================================== */
+
+/* --- DARK THEME (DEFAULT) --- */
+:root {
+  /* Core backgrounds */
+  --bg-body: #0a0f16;
+  --bg-sidebar: #161c26;
+  --bg-main: #0a0f16;
+  --bg-card: #161c26;
+  --bg-card-hover: #1f2734;
+  --bg-input: #0d141d;
+  --bg-header: #161c26;
+  --bg-tooltip: #1a2230;
+
+  /* Borders */
+  --border-color: #263246;
+  --border-strong: #33435c;
+  --border-input: #33435c;
+
+  /* Text */
+  --text-primary: #f2f5f7;
+  --text-secondary: #b0bcc8;
+  --text-muted: #8d9aab;
+  --text-link: #46c67d;
+  --text-heading: #ffffff;
+
+  /* Brand - Boltz Blue */
+  --brand-primary: #0d6078;
+  --brand-primary-hover: #117a97;
+  --brand-primary-light: rgba(13, 96, 120, 0.2);
+  --brand-primary-glow: rgba(13, 96, 120, 0.35);
+
+  /* Accent colors */
+  --accent-orange: #f8c929;
+  --accent-orange-bg: rgba(248, 201, 41, 0.2);
+  --accent-green: #46c67d;
+  --accent-green-bg: rgba(70, 198, 125, 0.2);
+  --accent-red: #f9623e;
+  --accent-red-bg: rgba(249, 98, 62, 0.2);
+  --accent-blue: #0d6078;
+  --accent-blue-bg: rgba(13, 96, 120, 0.2);
+  --accent-purple: #593a84;
+  --accent-purple-bg: rgba(89, 58, 132, 0.2);
+  --accent-cyan: #0d6078;
+  --accent-cyan-bg: rgba(13, 96, 120, 0.16);
+
+  /* Gradients */
+  --gradient-card-1: linear-gradient(135deg, #143041 0%, #161c26 100%);
+  --gradient-card-2: linear-gradient(135deg, #352553 0%, #161c26 100%);
+  --gradient-card-3: linear-gradient(135deg, #183a2a 0%, #161c26 100%);
+  --gradient-card-4: linear-gradient(135deg, #3a2f12 0%, #161c26 100%);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(13, 96, 120, 0.2);
+
+  /* Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-full: 999px;
+
+  /* Sidebar */
+  --sidebar-width: 270px;
+  --sidebar-collapsed-width: 72px;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s ease;
+
+  /* Scrollbar */
+  --scrollbar-bg: #161c26;
+  --scrollbar-thumb: #33435c;
+
+  /* Nav */
+  --nav-active-bg: var(--brand-primary-light);
+  --nav-active-color: var(--brand-primary);
+  --nav-active-indicator: var(--brand-primary);
+  --nav-hover-bg: rgba(255, 255, 255, 0.06);
+}
+
+/* --- LIGHT THEME --- */
+[data-theme="light"] {
+  --bg-body: #f2ebe1;
+  --bg-sidebar: #ffffff;
+  --bg-main: #f2ebe1;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f9f3eb;
+  --bg-input: #ffffff;
+  --bg-header: #ffffff;
+  --bg-tooltip: #ffffff;
+
+  --border-color: #e6ddd2;
+  --border-strong: #d5c9bb;
+  --border-input: #d5c9bb;
+
+  --text-primary: #022f40;
+  --text-secondary: rgba(2, 47, 64, 0.65);
+  --text-muted: rgba(2, 47, 64, 0.45);
+  --text-link: #0d6078;
+  --text-heading: #022f40;
+
+  --brand-primary: #0d6078;
+  --brand-primary-hover: #117a97;
+  --brand-primary-light: rgba(13, 96, 120, 0.1);
+  --brand-primary-glow: rgba(13, 96, 120, 0.18);
+
+  --accent-orange-bg: rgba(248, 201, 41, 0.16);
+  --accent-green-bg: rgba(70, 198, 125, 0.16);
+  --accent-red-bg: rgba(249, 98, 62, 0.14);
+  --accent-blue-bg: rgba(13, 96, 120, 0.12);
+  --accent-purple-bg: rgba(89, 58, 132, 0.12);
+  --accent-cyan-bg: rgba(13, 96, 120, 0.1);
+
+  --gradient-card-1: linear-gradient(135deg, #e8f2f5 0%, #ffffff 100%);
+  --gradient-card-2: linear-gradient(135deg, #efe7f8 0%, #ffffff 100%);
+  --gradient-card-3: linear-gradient(135deg, #e8f8ef 0%, #ffffff 100%);
+  --gradient-card-4: linear-gradient(135deg, #fff6d8 0%, #ffffff 100%);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 20px rgba(13, 96, 120, 0.08);
+
+  --scrollbar-bg: #f2ebe1;
+  --scrollbar-thumb: #ccbba8;
+
+  --nav-hover-bg: rgba(0, 0, 0, 0.04);
+}
+
+/* ========================================
+   GLOBAL RESETS & BASE STYLES
+   ======================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+  min-height: 100vh;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg-body);
+  transition: background-color var(--transition-slow), color var(--transition-slow);
+}
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ========================================
+   UTILITY: FORM ELEMENTS
+   ======================================== */
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+input,
+select,
+textarea {
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.85rem;
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-slow);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px var(--brand-primary-glow);
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ========================================
+   REMIX ICON OVERRIDES
+   ======================================== */
+
+i[class^='ri-'] {
+  line-height: 1;
+}
+
+/* ========================================
+   SELECTION
+   ======================================== */
+
+::selection {
+  background: var(--brand-primary);
+  color: #ffffff;
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}

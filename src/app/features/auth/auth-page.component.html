@@ -1,0 +1,492 @@
+<section class="auth-shell">
+  <!-- Animated background particles -->
+  <div class="bg-particles">
+    <div class="particle p1"></div>
+    <div class="particle p2"></div>
+    <div class="particle p3"></div>
+    <div class="particle p4"></div>
+    <div class="particle p5"></div>
+  </div>
+
+  <div class="auth-card">
+    <!-- Boltz Logo -->
+    <header class="auth-header">
+      <div class="logo-container">
+        <div class="logo-icon">
+          <i class="ri-flashlight-fill"></i>
+        </div>
+        <h1 class="logo-text">HOPEUP</h1>
+      </div>
+      <p class="auth-subtitle" *ngIf="!isRegisterMode">Sign in your account</p>
+      <p class="auth-subtitle" *ngIf="isRegisterMode">
+        {{ isDoctorRegisterMode ? 'Inscription doctor' : 'Inscription volontaire' }}
+      </p>
+    </header>
+
+    <!-- Theme toggle (floating) -->
+    <button type="button" class="theme-toggle-float" (click)="toggleTheme()"
+      [attr.aria-label]="isDark ? 'Mode clair' : 'Mode sombre'">
+      <i [class]="isDark ? 'ri-sun-line' : 'ri-moon-line'"></i>
+    </button>
+
+    <div *ngIf="feedback" class="feedback" [ngClass]="feedback.kind">
+      <i [class]="feedbackIcon(feedback.kind)"></i>
+      {{ feedback.message }}
+    </div>
+
+    <ng-container *ngIf="!isRegisterMode; else registerTemplate">
+      <form class="form-grid" [formGroup]="loginForm" novalidate>
+        <div class="field">
+          <label for="emailLogin">Email</label>
+          <div class="input-wrapper">
+            <i class="ri-mail-line field-icon"></i>
+            <input id="emailLogin" type="email" formControlName="email" placeholder="hello@example.com"
+              [class.invalid]="loginForm.controls.email.touched && loginForm.controls.email.invalid" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-wrapper">
+            <i class="ri-lock-line field-icon"></i>
+            <input id="password" [type]="showPassword ? 'text' : 'password'" formControlName="password"
+              placeholder="••••••••"
+              [class.invalid]="loginForm.controls.password.touched && loginForm.controls.password.invalid" />
+            <button type="button" class="eye-btn" (click)="showPassword = !showPassword">
+              <i [class]="showPassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="remember" />
+            <span class="checkmark"></span>
+            Remember my preference
+          </label>
+          <button class="link-btn" type="button">Forgot Password?</button>
+        </div>
+
+        <button type="button" class="primary-btn sign-btn" (click)="onLogin('admin')" [disabled]="isSubmittingLogin">
+          <i class="ri-login-box-line"></i>
+          {{ isSubmittingLogin ? 'Connexion...' : 'Sign Me In' }}
+        </button>
+
+        <button type="button" class="secondary-btn" (click)="onLogin('volunteer')" [disabled]="isSubmittingLogin">
+          <i class="ri-heart-line"></i>
+          Connexion volontaire
+        </button>
+
+        <button type="button" class="secondary-btn" (click)="onLogin('doctor')" [disabled]="isSubmittingLogin">
+          <i class="ri-stethoscope-line"></i>
+          Connexion doctor
+        </button>
+
+        <p class="switch-text">
+          Don't have an account?
+          <button class="link-btn accent" type="button" (click)="showRegisterForm('volunteer')">Sign up volontaire</button>
+          <button class="link-btn accent" type="button" (click)="showRegisterForm('doctor')">Sign up doctor</button>
+        </p>
+      </form>
+    </ng-container>
+
+    <ng-template #registerTemplate>
+      <div class="field-row" style="margin-bottom: 0.8rem;">
+        <button type="button" class="secondary-btn" (click)="setRegisterRole('volunteer')" [disabled]="!isDoctorRegisterMode">
+          <i class="ri-heart-line"></i>
+          Volontaire
+        </button>
+        <button type="button" class="secondary-btn" (click)="setRegisterRole('doctor')" [disabled]="isDoctorRegisterMode">
+          <i class="ri-stethoscope-line"></i>
+          Doctor
+        </button>
+      </div>
+
+      <ng-container *ngIf="!isDoctorRegisterMode; else doctorRegisterTemplate">
+      <ol class="steps">
+        <li *ngFor="let step of [1, 2, 3]; trackBy: trackStep" [ngClass]="stepState(step)">
+          <span class="step-circle">
+            <i *ngIf="stepState(step) === 'done'" class="ri-check-line"></i>
+            <ng-container *ngIf="stepState(step) !== 'done'">{{ step }}</ng-container>
+          </span>
+          <small>
+            {{
+            step === 1
+            ? 'Informations'
+            : step === 2
+            ? 'CIN'
+            : 'Photo'
+            }}
+          </small>
+        </li>
+      </ol>
+
+      <form class="form-grid" [formGroup]="registerForm" (ngSubmit)="onRegister()" novalidate>
+        <ng-container *ngIf="registerStep === 1">
+          <div class="field-group">
+            <div class="field">
+              <label for="firstName">Prénom</label>
+              <div class="input-wrapper">
+                <i class="ri-user-line field-icon"></i>
+                <input id="firstName" type="text" formControlName="firstName" placeholder="Votre prénom"
+                  [class.invalid]="registerForm.controls.firstName.touched && registerForm.controls.firstName.invalid" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="lastName">Nom</label>
+              <div class="input-wrapper">
+                <i class="ri-user-line field-icon"></i>
+                <input id="lastName" type="text" formControlName="lastName" placeholder="Votre nom"
+                  [class.invalid]="registerForm.controls.lastName.touched && registerForm.controls.lastName.invalid" />
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="email">Email</label>
+            <div class="input-wrapper">
+              <i class="ri-mail-line field-icon"></i>
+              <input id="email" type="email" formControlName="email" placeholder="votre.email@exemple.com"
+                [class.invalid]="registerForm.controls.email.touched && registerForm.controls.email.invalid" />
+            </div>
+          </div>
+
+          <div class="field-group two-columns">
+            <div class="field">
+              <label for="age">Âge</label>
+              <div class="input-wrapper">
+                <i class="ri-calendar-line field-icon"></i>
+                <input id="age" type="number" min="1" max="150" formControlName="age"
+                  [class.invalid]="registerForm.controls.age.touched && registerForm.controls.age.invalid" />
+              </div>
+            </div>
+          </div>
+
+          <small>
+            Le mot de passe sera généré automatiquement après vérification faciale et envoyé par email.
+          </small>
+
+          <div class="field">
+            <label for="phone">Téléphone</label>
+            <div class="input-wrapper">
+              <i class="ri-phone-line field-icon"></i>
+              <input id="phone" type="tel" formControlName="phone" placeholder="+33 1 23 45 67 89"
+                [class.invalid]="registerForm.controls.phone.touched && registerForm.controls.phone.invalid" />
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="registerStep === 2">
+          <div class="field">
+            <label for="cin">Numéro CIN</label>
+            <div class="input-wrapper">
+              <i class="ri-id-card-line field-icon"></i>
+              <input id="cin" type="text" formControlName="cin" placeholder="AB123456789"
+                [class.invalid]="registerForm.controls.cin.touched && registerForm.controls.cin.invalid" />
+            </div>
+          </div>
+
+          <div class="field-group two-columns">
+            <label class="upload-box">
+              <i class="ri-upload-cloud-2-line upload-icon"></i>
+              <span class="upload-title">Photo CIN (Recto)</span>
+              <input type="file" accept="image/*" (change)="onCinFileSelected('cinFrontName', $event)" />
+              <span class="upload-label">{{ cinFrontLabel }}</span>
+            </label>
+
+            <label class="upload-box">
+              <i class="ri-upload-cloud-2-line upload-icon"></i>
+              <span class="upload-title">Photo CIN (Verso)</span>
+              <input type="file" accept="image/*" (change)="onCinFileSelected('cinBackName', $event)" />
+              <span class="upload-label">{{ cinBackLabel }}</span>
+            </label>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="registerStep === 3">
+          <div class="capture-box">
+            <div class="camera-preview" [class.hidden]="!isCameraActive">
+              <video #cameraVideo id="face-camera-video" autoplay playsinline muted></video>
+              <canvas #captureCanvas id="face-capture-canvas" class="capture-canvas"></canvas>
+            </div>
+
+            <ng-container *ngIf="!isCameraActive">
+              <img *ngIf="capturedFacePreviewUrl; else idleFaceTemplate" [src]="capturedFacePreviewUrl"
+                alt="Capture faciale" class="captured-face-image" />
+            </ng-container>
+
+            <ng-template #idleFaceTemplate>
+              <div class="capture-icon">
+                <i class="ri-camera-3-line"></i>
+              </div>
+            </ng-template>
+
+            <p>Capture faciale</p>
+
+            <div class="capture-actions">
+              <button type="button" class="primary-btn" (click)="startFacialCapture()" *ngIf="!isCameraActive">
+                <i class="ri-camera-line"></i>
+                {{ capturedFacePreviewUrl ? 'Reprendre photo' : 'Activer caméra' }}
+              </button>
+
+              <button type="button" class="primary-btn" (click)="captureFacialPhoto()" *ngIf="isCameraActive"
+                [disabled]="!isCameraReady">
+                <i class="ri-camera-line"></i>
+                {{ isCameraReady ? 'Capturer' : 'Initialisation...' }}
+              </button>
+
+              <button type="button" class="ghost-btn" (click)="stopFacialCapture()" *ngIf="isCameraActive">
+                <i class="ri-close-line"></i>
+                Annuler
+              </button>
+
+              <label class="secondary-btn upload-face-btn">
+                <i class="ri-image-add-line"></i>
+                Importer photo
+                <input type="file" accept="image/*" (change)="onFaceImageSelected($event)" />
+              </label>
+            </div>
+
+            <small [class.success-text]="registerForm.controls.faceCaptured.value">
+              {{
+              registerForm.controls.faceCaptured.value
+              ? '✓ Photo faciale capturée'
+              : isCameraActive
+              ? (isCameraReady ? 'Caméra prête pour la capture' : 'Préparation de la caméra...')
+              : 'Aucune capture pour le moment'
+              }}
+            </small>
+            <small class="capture-error" *ngIf="captureError">{{ captureError }}</small>
+          </div>
+
+          <label class="checkbox-label terms">
+            <input type="checkbox" formControlName="terms" />
+            <span class="checkmark"></span>
+            J'accepte les conditions d'utilisation.
+          </label>
+        </ng-container>
+
+        <div class="actions">
+          <button type="button" class="ghost-btn" (click)="showLoginForm()" *ngIf="registerStep === 1">
+            <i class="ri-arrow-left-line"></i>
+            Retour
+          </button>
+
+          <button type="button" class="ghost-btn" (click)="goToPreviousStep()" *ngIf="registerStep > 1">
+            <i class="ri-arrow-left-line"></i>
+            Précédent
+          </button>
+
+          <button type="button" class="primary-btn" (click)="goToNextStep()" *ngIf="registerStep < 3">
+            Continuer
+            <i class="ri-arrow-right-line"></i>
+          </button>
+
+          <button type="submit" class="primary-btn" *ngIf="registerStep === 3" [disabled]="isSubmittingRegister">
+            <i class="ri-send-plane-line"></i>
+            {{ isSubmittingRegister ? 'Envoi...' : 'Envoyer' }}
+          </button>
+        </div>
+      </form>
+      </ng-container>
+
+      <ng-template #doctorRegisterTemplate>
+        <form class="form-grid" [formGroup]="registerForm" (ngSubmit)="onRegister()" novalidate>
+          <div class="field-group">
+            <div class="field">
+              <label for="doctorFirstName">Prénom</label>
+              <div class="input-wrapper">
+                <i class="ri-user-line field-icon"></i>
+                <input id="doctorFirstName" type="text" formControlName="firstName" placeholder="Votre prénom"
+                  [class.invalid]="registerForm.controls.firstName.touched && registerForm.controls.firstName.invalid" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="doctorLastName">Nom</label>
+              <div class="input-wrapper">
+                <i class="ri-user-line field-icon"></i>
+                <input id="doctorLastName" type="text" formControlName="lastName" placeholder="Votre nom"
+                  [class.invalid]="registerForm.controls.lastName.touched && registerForm.controls.lastName.invalid" />
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="doctorEmail">Email</label>
+            <div class="input-wrapper">
+              <i class="ri-mail-line field-icon"></i>
+              <input id="doctorEmail" type="email" formControlName="email" placeholder="doctor@exemple.com"
+                [class.invalid]="registerForm.controls.email.touched && registerForm.controls.email.invalid" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="doctorPhone">Téléphone</label>
+            <div class="input-wrapper">
+              <i class="ri-phone-line field-icon"></i>
+              <input id="doctorPhone" type="tel" formControlName="phone" placeholder="+33 1 23 45 67 89"
+                [class.invalid]="registerForm.controls.phone.touched && registerForm.controls.phone.invalid" />
+            </div>
+          </div>
+
+          <div class="field-group two-columns">
+            <div class="field">
+              <label for="doctorCity">Ville</label>
+              <div class="input-wrapper">
+                <i class="ri-map-pin-line field-icon"></i>
+                <input id="doctorCity" type="text" formControlName="city" placeholder="Tunis"
+                  [class.invalid]="registerForm.controls.city.touched && registerForm.controls.city.invalid" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="doctorGender">Genre</label>
+              <div class="input-wrapper">
+                <i class="ri-user-settings-line field-icon"></i>
+                <select id="doctorGender" formControlName="gender"
+                  [class.invalid]="registerForm.controls.gender.touched && registerForm.controls.gender.invalid">
+                  <option value="">Sélectionner</option>
+                  <option value="Homme">Homme</option>
+                  <option value="Femme">Femme</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="doctorAddress">Adresse</label>
+            <div class="input-wrapper">
+              <i class="ri-map-2-line field-icon"></i>
+              <input id="doctorAddress" type="text" formControlName="address" placeholder="Rue, quartier, code postal"
+                [class.invalid]="registerForm.controls.address.touched && registerForm.controls.address.invalid" />
+            </div>
+          </div>
+
+          <div class="field-group two-columns">
+            <div class="field">
+              <label for="doctorLanguage">Langue parlée</label>
+              <div class="input-wrapper">
+                <i class="ri-translate-2 field-icon"></i>
+                <input id="doctorLanguage" type="text" formControlName="spokenLanguage" placeholder="Français, Arabe"
+                  [class.invalid]="registerForm.controls.spokenLanguage.touched && registerForm.controls.spokenLanguage.invalid" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="doctorCnam">Conventionné CNAM</label>
+              <div class="input-wrapper">
+                <i class="ri-shield-check-line field-icon"></i>
+                <select id="doctorCnam" formControlName="cnamConventioned"
+                  [class.invalid]="registerForm.controls.cnamConventioned.touched && registerForm.controls.cnamConventioned.invalid">
+                  <option value="YES">Oui</option>
+                  <option value="NO">Non</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="doctorInsurance">Conventionné cartes assurance</label>
+            <div class="input-wrapper">
+              <i class="ri-bank-card-line field-icon"></i>
+              <select id="doctorInsurance" formControlName="insuranceConventioned"
+                [class.invalid]="registerForm.controls.insuranceConventioned.touched && registerForm.controls.insuranceConventioned.invalid">
+                <option value="YES">Oui</option>
+                <option value="NO">Non</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="doctorSpecialty">Spécialité</label>
+            <div class="input-wrapper">
+              <i class="ri-medicine-bottle-line field-icon"></i>
+              <input id="doctorSpecialty" type="text" formControlName="specialty" placeholder="Addictologie"
+                [class.invalid]="registerForm.controls.specialty.touched && registerForm.controls.specialty.invalid" />
+            </div>
+          </div>
+
+          <div class="field-group two-columns">
+            <div class="field">
+              <label for="doctorRegistrationNumber">Numéro d'inscription</label>
+              <div class="input-wrapper">
+                <i class="ri-id-card-line field-icon"></i>
+                <input id="doctorRegistrationNumber" type="text" formControlName="registrationNumber" placeholder="ORD-123456"
+                  [class.invalid]="registerForm.controls.registrationNumber.touched && registerForm.controls.registrationNumber.invalid" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="doctorYearsExperience">Années d'expérience</label>
+              <div class="input-wrapper">
+                <i class="ri-award-line field-icon"></i>
+                <input id="doctorYearsExperience" type="number" min="0" max="80" formControlName="yearsExperience"
+                  [class.invalid]="registerForm.controls.yearsExperience.touched && registerForm.controls.yearsExperience.invalid" />
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="doctorExperienceDetails">Description de votre travail</label>
+            <div class="input-wrapper textarea-wrapper">
+              <i class="ri-file-text-line field-icon"></i>
+              <textarea
+                id="doctorExperienceDetails"
+                rows="4"
+                formControlName="experienceDetails"
+                placeholder="Décrivez votre pratique, vos missions et votre expérience."
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="doctorProfessionalDetails">Informations professionnelles</label>
+            <div class="input-wrapper textarea-wrapper">
+              <i class="ri-briefcase-4-line field-icon"></i>
+              <textarea
+                id="doctorProfessionalDetails"
+                rows="3"
+                formControlName="professionalDetails"
+                placeholder="Ex: hôpital/clinique, domaines d'expertise, horaires, services proposés."
+              ></textarea>
+            </div>
+          </div>
+
+          <label class="upload-box">
+            <i class="ri-image-add-line upload-icon"></i>
+            <span class="upload-title">Photo professionnelle</span>
+            <input type="file" accept="image/*" (change)="onDoctorPhotoSelected($event)" />
+            <span class="upload-label">{{ doctorPhotoLabel }}</span>
+          </label>
+
+          <label class="upload-box">
+            <i class="ri-upload-cloud-2-line upload-icon"></i>
+            <span class="upload-title">Diplômes (PDF / image)</span>
+            <input type="file" multiple accept=".pdf,image/*" (change)="onDoctorDiplomasSelected($event)" />
+            <span class="upload-label">{{ doctorDiplomasLabel }}</span>
+          </label>
+
+          <small>
+            Après validation admin, votre compte doctor sera créé automatiquement et le mot de passe sera envoyé par email.
+          </small>
+
+          <label class="checkbox-label terms">
+            <input type="checkbox" formControlName="terms" />
+            <span class="checkmark"></span>
+            J'accepte les conditions d'utilisation.
+          </label>
+
+          <div class="actions">
+            <button type="button" class="ghost-btn" (click)="showLoginForm()">
+              <i class="ri-arrow-left-line"></i>
+              Retour
+            </button>
+
+            <button type="submit" class="primary-btn" [disabled]="isSubmittingRegister">
+              <i class="ri-send-plane-line"></i>
+              {{ isSubmittingRegister ? 'Envoi...' : 'Envoyer demande doctor' }}
+            </button>
+          </div>
+        </form>
+      </ng-template>
+    </ng-template>
+  </div>
+</section>

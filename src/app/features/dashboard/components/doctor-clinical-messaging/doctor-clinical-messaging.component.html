@@ -1,0 +1,179 @@
+<section class="doctor-chat-page">
+  <section *ngIf="errorMessage" class="message error">{{ errorMessage }}</section>
+  <section *ngIf="successMessage" class="message success">{{ successMessage }}</section>
+
+  <section class="chat-shell panel">
+    <aside class="patient-list">
+      <div class="search-wrap">
+        <input type="text" [(ngModel)]="searchTerm" placeholder="Search your patient name, or chat" />
+      </div>
+
+      <div class="avatar-strip" *ngIf="filteredPatients.length > 0">
+        <button
+          type="button"
+          class="avatar-chip"
+          *ngFor="let patient of filteredPatients | slice:0:4"
+          [class.active]="selectedPatientId === patient.patientId"
+          (click)="selectPatient(patient.patientId)"
+        >
+          <span>{{ patientInitials(patient.patientName) || 'P' }}</span>
+          <small>{{ patient.patientName.split(' ')[0] }}</small>
+        </button>
+      </div>
+
+      <div class="chats-title-row">
+        <h3>Chats</h3>
+        <button type="button" class="refresh-btn" (click)="loadAcceptedPatients()" [disabled]="isPatientsLoading">↻</button>
+      </div>
+
+      <div class="patient-list-body" *ngIf="!isPatientsLoading; else loadingPatientsState">
+        <button
+          type="button"
+          class="patient-item"
+          *ngFor="let patient of filteredPatients"
+          [class.active]="selectedPatientId === patient.patientId"
+          (click)="selectPatient(patient.patientId)"
+        >
+          <div class="avatar">{{ patientInitials(patient.patientName) || 'P' }}</div>
+          <div class="item-content">
+            <div class="line-top">
+              <strong>{{ patient.patientName }}</strong>
+              <small>{{ formatTime(patient.lastAppointmentDateTime) }}</small>
+            </div>
+            <div class="line-bottom">{{ patient.lastReason }}</div>
+          </div>
+          <span class="counter">{{ patient.appointmentCount }}</span>
+        </button>
+
+        <div class="empty" *ngIf="filteredPatients.length === 0">
+          Aucun patient accepté pour le moment.
+        </div>
+      </div>
+
+      <ng-template #loadingPatientsState>
+        <div class="loading">Chargement des patients...</div>
+      </ng-template>
+    </aside>
+
+    <section class="chat-pane" *ngIf="selectedPatient as activePatient; else emptySelection">
+      <header class="chat-pane-header">
+        <div class="chat-user">
+          <div class="avatar header-avatar">{{ patientInitials(activePatient.patientName) || 'P' }}</div>
+          <div>
+            <h4>{{ activePatient.patientName }}</h4>
+            <small>Online</small>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="action-btn" (click)="togglePushNotifications()">
+            {{ pushEnabled ? '🔔' : '🔕' }}
+          </button>
+          <button type="button" class="action-btn" (click)="markAllPushNotificationsAsRead()">👁️</button>
+        </div>
+      </header>
+
+      <div class="push-banner" *ngIf="pushEnabled">
+        <span>Notifications push: {{ unreadNotificationCount }} non lue(s)</span>
+        <small *ngIf="latestPushPreview">{{ latestPushPreview }}</small>
+      </div>
+
+      <div class="templates-strip">
+        <button
+          type="button"
+          class="template-chip"
+          *ngFor="let suggestion of smartSuggestions"
+          (click)="applyTemplateSuggestion(suggestion)"
+        >
+          {{ suggestion.value }}
+        </button>
+      </div>
+
+      <div class="messages-area" *ngIf="!isLoading; else loadingState">
+        <div class="date-chip">Today</div>
+
+        <div class="message-group" *ngFor="let group of groupedThread" [class.mine]="group.mine">
+          <div class="group-avatar" *ngIf="!group.mine">{{ patientInitials(group.senderName) || 'P' }}</div>
+
+          <div class="group-bubbles">
+            <div class="message-row" *ngFor="let message of group.items" [class.mine]="group.mine">
+              <div class="bubble">
+                <p>{{ message.content }}</p>
+
+                <ng-container *ngIf="message.attachment as attachment">
+                  <img
+                    *ngIf="attachment.contentType?.startsWith('image/'); else nonImageAttachment"
+                    class="attachment-image"
+                    [src]="attachmentUrl(attachment.url)"
+                    [alt]="attachment.name || 'Image médicale'"
+                    loading="lazy"
+                  />
+
+                  <ng-template #nonImageAttachment>
+                    <a
+                      class="attachment-link"
+                      [href]="attachmentUrl(attachment.url)"
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      📎 {{ attachment.name }}
+                    </a>
+                  </ng-template>
+                </ng-container>
+
+                <div class="meta-row">
+                  <span class="ctx-badge" [ngClass]="contextBadgeClass(message)">{{ contextBadgeLabel(message) }}</span>
+                  <small>{{ message.createdAt | date:'HH:mm' }}</small>
+                  <small class="sent-flag" *ngIf="isMine(message)">
+                    {{ sentIndicator(message) }} {{ sentIndicatorLabel(message) }}
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty" *ngIf="thread.length === 0">
+          Conversation vide. Envoyez le premier message.
+        </div>
+      </div>
+
+      <ng-template #loadingState>
+        <div class="loading">Chargement de la conversation...</div>
+      </ng-template>
+
+      <div class="attachment-preview" *ngIf="selectedAttachment">
+        <span>📄 {{ selectedAttachment.name }}</span>
+        <button type="button" (click)="removeAttachment()">Retirer</button>
+      </div>
+
+      <div class="composer">
+        <label for="doctor-chat-attachment" class="icon-btn" title="Pièce jointe">+</label>
+        <input
+          id="doctor-chat-attachment"
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+          (change)="onAttachmentSelected($event)"
+          hidden
+        />
+
+        <input
+          type="text"
+          [(ngModel)]="draftMessage"
+          placeholder="Type your unique message"
+          (keyup.enter)="sendMessage()"
+        />
+
+        <button type="button" class="icon-btn" [disabled]="isUploadingAttachment">📎</button>
+        <button type="button" class="icon-btn send" [disabled]="!canSend() || isUploadingAttachment" (click)="sendMessage()">
+          {{ isUploadingAttachment ? '…' : '➤' }}
+        </button>
+      </div>
+    </section>
+
+    <ng-template #emptySelection>
+      <section class="chat-pane placeholder">
+        <div class="empty">Choisissez un patient accepté pour ouvrir la conversation.</div>
+      </section>
+    </ng-template>
+  </section>
+</section>

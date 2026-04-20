@@ -1,0 +1,256 @@
+<div class="toast-host" *ngIf="toast as toastMessage">
+  <div class="toast" [ngClass]="'toast-' + toastMessage.kind" role="status" aria-live="polite">
+    <span>{{ toastMessage.text }}</span>
+    <button type="button" class="toast-close" (click)="closeToast()" aria-label="Fermer notification">×</button>
+  </div>
+</div>
+
+<section class="validation-header">
+  <div>
+    <p *ngIf="isLoading">Chargement des demandes...</p>
+    <p *ngIf="!isLoading && lastUpdated">Dernière mise à jour: {{ lastUpdated }}</p>
+  </div>
+
+  <div class="header-actions">
+    <select
+      [value]="statusFilter"
+      (change)="setStatusFilter(($any($event.target).value))"
+      [disabled]="isLoading || isActionLoading"
+    >
+      <option *ngFor="let option of statusFilterOptions" [value]="option.value">{{ option.label }}</option>
+    </select>
+    <button type="button" (click)="refreshManually()" [disabled]="isLoading || isActionLoading">Rafraîchir</button>
+  </div>
+</section>
+
+<section class="modal-backdrop" *ngIf="showRejectModal">
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
+    <header class="confirm-modal-header">
+      <h4 id="reject-modal-title">Motif de refus</h4>
+      <p>Ce message sera envoyé par email au volontaire.</p>
+    </header>
+
+    <div class="confirm-modal-body">
+      <label for="reject-reason">Motif</label>
+      <textarea
+        id="reject-reason"
+        [(ngModel)]="rejectReasonDraft"
+        rows="4"
+        placeholder="Saisir le motif de refus"
+        [disabled]="isActionLoading"
+      ></textarea>
+    </div>
+
+    <div class="confirm-modal-actions">
+      <button type="button" class="modal-cancel" (click)="closeRejectModal()" [disabled]="isActionLoading">
+        Annuler
+      </button>
+      <button type="button" class="modal-reject" (click)="confirmRejectSelected()" [disabled]="isActionLoading">
+        {{ isActionLoading ? 'Envoi...' : 'Confirmer le rejet' }}
+      </button>
+    </div>
+  </div>
+</section>
+
+<section class="modal-backdrop" *ngIf="showDeleteModal">
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-request-modal-title">
+    <header class="confirm-modal-header">
+      <h4 id="delete-request-modal-title">Supprimer la demande</h4>
+      <p>Cette action supprime la demande d'inscription et ses documents enregistrés.</p>
+    </header>
+
+    <div class="confirm-modal-body">
+      <p *ngIf="selectedVolunteer as selected">
+        Supprimer la demande de <strong>{{ selected.name }}</strong> ?
+      </p>
+      <p class="modal-warning">Cette action est irréversible.</p>
+    </div>
+
+    <div class="confirm-modal-actions">
+      <button type="button" class="modal-cancel" (click)="closeDeleteModal()" [disabled]="isActionLoading">
+        Annuler
+      </button>
+      <button type="button" class="modal-delete" (click)="confirmDeleteSelected()" [disabled]="isActionLoading">
+        <i class="ri-delete-bin-6-line" aria-hidden="true"></i>
+        <span>{{ isActionLoading ? 'Suppression...' : 'Supprimer la demande' }}</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<section class="stats-grid">
+  <article class="stat-card">
+    <span>Total demandes</span>
+    <strong>{{ totalRequests }}</strong>
+  </article>
+  <article class="stat-card pending">
+    <span>En attente</span>
+    <strong>{{ pendingCount }}</strong>
+  </article>
+  <article class="stat-card approved">
+    <span>Approuvées</span>
+    <strong>{{ approvedCount }}</strong>
+  </article>
+  <article class="stat-card rejected">
+    <span>Rejetées</span>
+    <strong>{{ rejectedCount }}</strong>
+  </article>
+  <article class="stat-card error">
+    <span>Erreurs</span>
+    <strong>{{ errorCount }}</strong>
+  </article>
+</section>
+
+<section *ngIf="errorMessage" class="message error">{{ errorMessage }}</section>
+<section *ngIf="successMessage" class="message success">{{ successMessage }}</section>
+
+<section class="validation-grid">
+  <article class="panel">
+    <header>
+      <h3>Demandes volontaires</h3>
+      <p>{{ volunteers.length }} affichée(s) / {{ totalRequests }} total</p>
+    </header>
+
+    <ul class="request-list" *ngIf="volunteers.length > 0; else noRequests">
+      <li
+        *ngFor="let volunteer of volunteers; trackBy: trackByVolunteerId"
+        [class.active]="selectedVolunteerId === volunteer.id"
+        (click)="selectVolunteer(volunteer.id)"
+      >
+        <div class="request-main">
+          <div class="top-row">
+            <h4>{{ volunteer.name }}</h4>
+            <span class="status" [ngClass]="statusBadgeClass(volunteer.status)">{{ volunteer.statusLabel }}</span>
+          </div>
+          <p>{{ volunteer.email }}</p>
+          <small>
+            CIN: {{ volunteer.cin }}
+            <span *ngIf="volunteer.phone"> | Tél: {{ volunteer.phone }}</span>
+            | Score IA: {{ volunteer.aiMatch }}%
+          </small>
+          <small>Créée: {{ volunteer.createdAtLabel }} | Traitée: {{ volunteer.processedAtLabel }}</small>
+        </div>
+      </li>
+    </ul>
+
+    <ng-template #noRequests>
+      <div class="empty-state">
+        <p>Aucune demande volontaire pour le filtre sélectionné.</p>
+      </div>
+    </ng-template>
+  </article>
+
+  <article class="panel" *ngIf="selectedVolunteer as selected; else noSelection">
+    <header>
+      <h3>Analyse détaillée</h3>
+      <p>{{ selected.name }} | {{ selected.statusLabel }} | Créée le {{ selected.createdAtLabel }}</p>
+    </header>
+
+    <section class="identity-grid">
+      <div class="identity-item">
+        <span>Email</span>
+        <strong>{{ selected.email }}</strong>
+      </div>
+      <div class="identity-item">
+        <span>Téléphone</span>
+        <strong>{{ selected.phone || '-' }}</strong>
+      </div>
+      <div class="identity-item">
+        <span>Âge</span>
+        <strong>{{ selected.age }} ans</strong>
+      </div>
+      <div class="identity-item">
+        <span>CIN</span>
+        <strong>{{ selected.cin }}</strong>
+      </div>
+      <div class="identity-item">
+        <span>Statut</span>
+        <strong>{{ selected.statusLabel }}</strong>
+      </div>
+      <div class="identity-item">
+        <span>Traitée le</span>
+        <strong>{{ selected.processedAtLabel }}</strong>
+      </div>
+    </section>
+
+    <section class="documents-grid">
+      <figure class="doc-card" *ngIf="selected.faceImageUrl">
+        <img [src]="selected.faceImageUrl" alt="Photo visage" />
+        <figcaption>Photo visage (capture signup)</figcaption>
+      </figure>
+      <figure class="doc-card" *ngIf="selected.cinFrontImageUrl">
+        <img [src]="selected.cinFrontImageUrl" alt="CIN recto" />
+        <figcaption>CIN recto</figcaption>
+      </figure>
+      <figure class="doc-card" *ngIf="selected.cinBackImageUrl">
+        <img [src]="selected.cinBackImageUrl" alt="CIN verso" />
+        <figcaption>CIN verso</figcaption>
+      </figure>
+    </section>
+
+    <div class="metric">
+      <div>
+        <span>Correspondance faciale (IA)</span>
+        <strong>{{ selected.aiMatch }}%</strong>
+      </div>
+      <div class="bar">
+        <i [style.width.%]="selected.aiMatch"></i>
+      </div>
+    </div>
+
+    <div class="recommendation">Recommandation: {{ selected.recommendation }}</div>
+    <div class="note">Motif / Note: {{ selected.note }}</div>
+
+    <div class="actions">
+      <button
+        type="button"
+        class="approve"
+        (click)="approveSelected()"
+        [disabled]="isActionLoading || selected.status !== 'PENDING'"
+      >
+        Approuver
+      </button>
+      <button
+        type="button"
+        class="review"
+        (click)="reviewSelected()"
+        [disabled]="isActionLoading"
+      >
+        Examiner
+      </button>
+      <button
+        type="button"
+        class="reject"
+        (click)="rejectSelected()"
+        [disabled]="isActionLoading || selected.status !== 'PENDING'"
+      >
+        Rejeter
+      </button>
+      <button
+        type="button"
+        class="delete-request"
+        (click)="deleteSelected()"
+        [disabled]="isActionLoading"
+      >
+        <i class="ri-delete-bin-6-line" aria-hidden="true"></i>
+        <span>Supprimer demande</span>
+      </button>
+    </div>
+
+    <p class="action-hint" *ngIf="selected.status !== 'PENDING'">
+      Cette demande a déjà été traitée. Les actions d'approbation/rejet sont désactivées.
+    </p>
+  </article>
+
+  <ng-template #noSelection>
+    <article class="panel empty-selection">
+      <header>
+        <h3>Analyse détaillée</h3>
+        <p>Aucune demande sélectionnée</p>
+      </header>
+      <div class="empty-state">
+        <p>Quand une demande est disponible, ses détails apparaîtront ici.</p>
+      </div>
+    </article>
+  </ng-template>
+</section>

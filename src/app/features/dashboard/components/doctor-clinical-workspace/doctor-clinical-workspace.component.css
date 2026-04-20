@@ -1,0 +1,295 @@
+:host {
+  display: block;
+}
+
+.workspace-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.workspace-header,
+.panel-header-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.workspace-header {
+  padding: 1rem 1.1rem;
+}
+
+.workspace-header h3,
+.panel-header h4,
+.patient-card h5,
+.draft-column h5,
+.appointments-section h5,
+.report-block h5,
+.modal-header h4 {
+  margin: 0;
+}
+
+.workspace-header p,
+.subtitle,
+.empty,
+.simple-list p,
+.simple-list small,
+.draft-list p,
+.draft-list small,
+.card-details p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.panel-header {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panel-content {
+  padding: 1rem;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.patient-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  background: color-mix(in srgb, var(--bg-main) 18%, var(--bg-card));
+  display: grid;
+  gap: 0.9rem;
+}
+
+.card-head,
+.draft-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.count-pill {
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  background: color-mix(in srgb, var(--brand-primary) 18%, var(--bg-card));
+  color: var(--brand-primary);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.card-details {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.card-actions,
+.inline-actions,
+.modal-footer {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.form-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.patient-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.summary-item {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.summary-item span {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.plan-form,
+.modal-content {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.plan-form label,
+.modal-content label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+input,
+textarea,
+select {
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.65rem;
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.two-col,
+.draft-section,
+.report-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.draft-column,
+.appointments-section,
+.report-block {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.appointments-section,
+.report-block {
+  grid-column: 1 / -1;
+}
+
+.draft-list,
+.appointment-history,
+.simple-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.draft-list li,
+.appointment-history li,
+.simple-list li {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-card) 72%, var(--bg-main));
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.message {
+  border-radius: var(--radius-md);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.84rem;
+}
+
+.message.error {
+  background: color-mix(in srgb, var(--accent-red-bg) 85%, var(--bg-card));
+  border: 1px solid var(--accent-red);
+}
+
+.message.success {
+  background: color-mix(in srgb, var(--accent-green-bg) 85%, var(--bg-card));
+  border: 1px solid var(--accent-green);
+}
+
+.primary-btn,
+.ghost-btn,
+.text-btn {
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.primary-btn,
+.ghost-btn {
+  padding: 0.5rem 0.9rem;
+}
+
+.primary-btn {
+  border: 1px solid var(--brand-primary);
+  background: var(--brand-primary);
+  color: #fff;
+}
+
+.ghost-btn,
+.text-btn {
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.text-btn {
+  padding: 0;
+  border: none;
+  color: var(--brand-primary);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 1000;
+}
+
+.modal-card {
+  width: min(100%, 560px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+}
+
+.modal-header,
+.modal-footer {
+  padding: 1rem;
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-content {
+  padding: 1rem;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border-color);
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .two-col,
+  .draft-section,
+  .report-layout,
+  .workspace-header,
+  .panel-header-between {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .card-actions,
+  .inline-actions,
+  .modal-footer {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,134 @@
+<section class="doctor-history">
+  <header class="doctor-header">
+    <div>
+      <h3>Historique des rendez-vous</h3>
+      <p>Consultez tous les rendez-vous déjà traités (acceptés ou rejetés).</p>
+    </div>
+    <button type="button" class="refresh-btn" (click)="refresh()" [disabled]="isLoading">Rafraîchir</button>
+  </header>
+
+  <section class="summary-grid">
+    <article class="summary-card accepted">
+      <span>Acceptés</span>
+      <strong>{{ acceptedCount }}</strong>
+    </article>
+    <article class="summary-card rejected">
+      <span>Rejetés</span>
+      <strong>{{ rejectedCount }}</strong>
+    </article>
+    <article class="summary-card all">
+      <span>Total traités</span>
+      <strong>{{ totalCount }}</strong>
+    </article>
+  </section>
+
+  <section *ngIf="errorMessage" class="message error">{{ errorMessage }}</section>
+
+  <section class="toolbar">
+    <div class="toolbar-search">
+      <i class="ri-search-line"></i>
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="onSearchChanged()"
+        placeholder="Rechercher patient, email, motif..."
+      />
+    </div>
+
+    <select
+      [value]="statusFilter"
+      (change)="setStatusFilter($any($event.target).value)"
+      [disabled]="isLoading"
+      aria-label="Filtrer par statut"
+    >
+      <option *ngFor="let option of statusOptions" [value]="option.value">{{ option.label }}</option>
+    </select>
+  </section>
+
+  <section class="appointments-grid" *ngIf="!isLoading; else loadingState">
+    <article class="panel list-panel">
+      <header class="panel-header">
+        <h4>Liste</h4>
+        <p>{{ filteredAppointments.length }} affichée(s) / {{ totalCount }} total</p>
+      </header>
+
+      <ul class="appointment-list" *ngIf="filteredAppointments.length > 0; else emptyList">
+        <li
+          *ngFor="let appointment of filteredAppointments"
+          [class.active]="selectedAppointmentId === appointment.id"
+          (click)="selectAppointment(appointment.id)"
+        >
+          <div class="list-row-top">
+            <strong>{{ appointment.patientName || 'Patient' }}</strong>
+            <span [class]="statusClass(appointment.status)">{{ statusLabel(appointment.status) }}</span>
+          </div>
+          <p>{{ appointment.patientEmail || 'Email non renseigné' }}</p>
+          <small>{{ formatListDateTime(appointment.appointmentDateTime) }} | {{ visitTypeLabel(appointment.visitType) }}</small>
+          <small class="reason-preview">{{ appointment.reason }}</small>
+        </li>
+      </ul>
+
+      <ng-template #emptyList>
+        <div class="empty-state">
+          <p>Aucun rendez-vous traité pour ce filtre.</p>
+        </div>
+      </ng-template>
+    </article>
+
+    <article class="panel detail-panel" *ngIf="selectedAppointment as selected; else noSelection">
+      <header class="panel-header detail-header">
+        <div>
+          <h4>{{ selected.patientName || 'Patient' }}</h4>
+          <p>{{ selected.patientEmail || 'Email non renseigné' }}</p>
+        </div>
+        <span [class]="statusClass(selected.status)">{{ statusLabel(selected.status) }}</span>
+      </header>
+
+      <section class="info-grid">
+        <div class="info-item">
+          <span>RDV prévu</span>
+          <strong>{{ formatDateTime(selected.appointmentDateTime) }}</strong>
+        </div>
+        <div class="info-item">
+          <span>Traité le</span>
+          <strong>{{ formatDateTime(selected.updatedAt) }}</strong>
+        </div>
+        <div class="info-item">
+          <span>Type</span>
+          <strong>{{ visitTypeLabel(selected.visitType) }}</strong>
+        </div>
+        <div class="info-item">
+          <span>Téléphone patient</span>
+          <strong>{{ selected.patientPhone || '-' }}</strong>
+        </div>
+      </section>
+
+      <section class="content-block">
+        <h5>Motif du rendez-vous</h5>
+        <p>{{ selected.reason }}</p>
+      </section>
+
+      <section class="content-block" *ngIf="selected.notes">
+        <h5>Notes du patient</h5>
+        <p>{{ selected.notes }}</p>
+      </section>
+
+      <section class="content-block" *ngIf="selected.decisionReason">
+        <h5>Décision envoyée</h5>
+        <p>{{ selected.decisionReason }}</p>
+      </section>
+    </article>
+
+    <ng-template #noSelection>
+      <article class="panel detail-panel empty-state">
+        <p>Sélectionnez un rendez-vous pour voir les détails.</p>
+      </article>
+    </ng-template>
+  </section>
+
+  <ng-template #loadingState>
+    <section class="panel loading-panel">
+      <p>Chargement de l’historique...</p>
+    </section>
+  </ng-template>
+</section>

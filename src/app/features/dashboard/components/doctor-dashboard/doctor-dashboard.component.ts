@@ -1,3 +1,4 @@
+import { CommonModule } from '@angular/common';
 import { Component, OnInit, ChangeDetectorRef, NgZone, OnDestroy } from '@angular/core';
 import {
   DoctorAppointmentItem,
@@ -28,7 +29,8 @@ interface StatsChartBar {
   selector: 'app-doctor-dashboard',
   templateUrl: './doctor-dashboard.component.html',
   styleUrl: './doctor-dashboard.component.css',
-  standalone: false
+  imports: [CommonModule],
+  standalone: true
 })
 export class DoctorDashboardComponent implements OnInit, OnDestroy {
   isLoading = false;

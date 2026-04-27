@@ -1,8 +1,18 @@
+import { CommonModule } from '@angular/common';
 import { Component, ElementRef, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService, UserRole } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { AdminService, AdminUserListItem, VolunteerSignupAdminItem } from '../../core/services/admin.service';
+import { DashboardOverviewComponent } from './components/dashboard-overview/dashboard-overview.component';
+import { DoctorAppointmentsHistoryComponent } from './components/doctor-appointments-history/doctor-appointments-history.component';
+import { DoctorClinicalMessagingComponent } from './components/doctor-clinical-messaging/doctor-clinical-messaging.component';
+import { DoctorClinicalWorkspaceComponent } from './components/doctor-clinical-workspace/doctor-clinical-workspace.component';
+import { DoctorDashboardComponent } from './components/doctor-dashboard/doctor-dashboard.component';
+import { DoctorsValidationComponent } from './components/doctors-validation/doctors-validation.component';
+import { LiveMapComponent } from './components/live-map/live-map.component';
+import { UsersManagementComponent } from './components/users-management/users-management.component';
+import { VolunteersValidationComponent } from './components/volunteers-validation/volunteers-validation.component';
 
 type DashboardSection =
   | 'dashboard'
@@ -44,7 +54,19 @@ interface HeaderPeriodFilterOption {
   selector: 'app-dashboard-page',
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.css',
-  standalone: false
+  imports: [
+    CommonModule,
+    DashboardOverviewComponent,
+    DoctorDashboardComponent,
+    DoctorAppointmentsHistoryComponent,
+    DoctorClinicalWorkspaceComponent,
+    DoctorClinicalMessagingComponent,
+    UsersManagementComponent,
+    VolunteersValidationComponent,
+    DoctorsValidationComponent,
+    LiveMapComponent
+  ],
+  standalone: true
 })
 export class DashboardPageComponent implements OnInit, OnDestroy {
   private readonly themeService = inject(ThemeService);
@@ -355,11 +377,18 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
         this.adminService.getAllUsers(),
         this.adminService.getVolunteerSignups()
       ]);
-      this.notifications = this.buildNotifications(users, signups);
+      const nextNotifications = this.buildNotifications(users, signups);
+      // Defer binding updates to avoid NG0100 when dev mode re-checks after async resolution.
+      window.setTimeout(() => {
+        this.notifications = nextNotifications;
+        this.notificationsError = '';
+        this.notificationsLoading = false;
+      });
     } catch (error) {
-      this.notificationsError = error instanceof Error ? error.message : 'Impossible de charger les notifications.';
-    } finally {
-      this.notificationsLoading = false;
+      window.setTimeout(() => {
+        this.notificationsError = error instanceof Error ? error.message : 'Impossible de charger les notifications.';
+        this.notificationsLoading = false;
+      });
     }
   }
 

@@ -396,9 +396,15 @@ export class AuthService {
 
   private extractErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HttpErrorResponse) {
-      const payload = error.error as { message?: string } | null;
-      if (payload && typeof payload.message === 'string' && payload.message.trim() !== '') {
-        return payload.message;
+      const body = error.error;
+      if (body && typeof body === 'object' && 'message' in body) {
+        const msg = (body as { message?: unknown }).message;
+        if (typeof msg === 'string' && msg.trim() !== '') {
+          return msg;
+        }
+      }
+      if (typeof body === 'string' && body.trim() !== '') {
+        return body.length > 300 ? `${body.slice(0, 300)}…` : body;
       }
       if (typeof error.message === 'string' && error.message.trim() !== '') {
         return error.message;

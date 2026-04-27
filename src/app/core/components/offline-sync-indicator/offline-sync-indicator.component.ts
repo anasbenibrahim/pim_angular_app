@@ -1,3 +1,4 @@
+import { CommonModule } from '@angular/common';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { OfflineSyncService, OfflineRequest } from '../../services/offline-sync.service';
 import { Subject } from 'rxjs';
@@ -7,7 +8,8 @@ import { takeUntil } from 'rxjs/operators';
   selector: 'app-offline-sync-indicator',
   templateUrl: './offline-sync-indicator.component.html',
   styleUrls: ['./offline-sync-indicator.component.css'],
-  standalone: false
+  imports: [CommonModule],
+  standalone: true
 })
 export class OfflineSyncIndicatorComponent implements OnInit, OnDestroy {
   isOnline: boolean = true;

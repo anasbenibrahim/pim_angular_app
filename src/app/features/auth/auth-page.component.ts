@@ -1,5 +1,6 @@
+import { CommonModule } from '@angular/common';
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
-import { FormBuilder, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService, RegisterDoctorPayload, RegisterPayload, UserRole } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
@@ -10,7 +11,8 @@ type FeedbackKind = 'success' | 'error' | 'info';
   selector: 'app-auth-page',
   templateUrl: './auth-page.component.html',
   styleUrl: './auth-page.component.css',
-  standalone: false
+  imports: [CommonModule, ReactiveFormsModule],
+  standalone: true
 })
 export class AuthPageComponent implements OnInit, OnDestroy {
   private readonly formBuilder = inject(FormBuilder).nonNullable;
@@ -42,7 +44,6 @@ export class AuthPageComponent implements OnInit, OnDestroy {
   private cinBackFile: File | null = null;
   private doctorPhotoFile: File | null = null;
   private doctorDiplomaFiles: File[] = [];
-  private postRegisterRedirectTimer: ReturnType<typeof setTimeout> | null = null;
 
   feedback: { kind: FeedbackKind; message: string } | null = null;
 
@@ -89,10 +90,6 @@ export class AuthPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.postRegisterRedirectTimer) {
-      clearTimeout(this.postRegisterRedirectTimer);
-      this.postRegisterRedirectTimer = null;
-    }
     this.stopCamera();
     this.clearCapturedFace();
   }
@@ -134,9 +131,11 @@ export class AuthPageComponent implements OnInit, OnDestroy {
     this.resetRegisterFiles();
   }
 
-  showLoginForm(): void {
+  showLoginForm(clearFeedback = true): void {
     this.isRegisterMode = false;
-    this.feedback = null;
+    if (clearFeedback) {
+      this.feedback = null;
+    }
     this.registerStep = 1;
     this.stopCamera();
     this.clearCapturedFace();
@@ -428,80 +427,82 @@ export class AuthPageComponent implements OnInit, OnDestroy {
     }
 
     this.isSubmittingRegister = true;
-    const raw = this.registerForm.getRawValue();
-    const result = this.isDoctorRegisterMode
-      ? await this.authService.registerDoctor({
-          firstName: raw.firstName,
-          lastName: raw.lastName,
-          email: raw.email,
-          phone: raw.phone,
-          city: raw.city,
-          address: raw.address,
-          gender: raw.gender,
-          spokenLanguage: raw.spokenLanguage,
-          cnamConventioned: raw.cnamConventioned === 'NO' ? 'NO' : 'YES',
-          insuranceConventioned: raw.insuranceConventioned === 'YES' ? 'YES' : 'NO',
-          specialty: raw.specialty,
-          registrationNumber: raw.registrationNumber,
-          yearsExperience: raw.yearsExperience,
-          experienceDetails: raw.experienceDetails,
-          professionalDetails: raw.professionalDetails,
-          profilePhotoFile: this.doctorPhotoFile,
-          diplomas: this.doctorDiplomaFiles
-        } as RegisterDoctorPayload)
-      : await this.authService.register({
-          firstName: raw.firstName,
-          lastName: raw.lastName,
-          email: raw.email,
-          age: raw.age,
-          cin: raw.cin,
-          phone: raw.phone,
-          cinFrontFile: this.cinFrontFile,
-          cinBackFile: this.cinBackFile,
-          faceImageFile: this.capturedFaceFile
-        } as RegisterPayload);
-    this.isSubmittingRegister = false;
+    try {
+      const raw = this.registerForm.getRawValue();
+      const result = this.isDoctorRegisterMode
+        ? await this.authService.registerDoctor({
+            firstName: raw.firstName,
+            lastName: raw.lastName,
+            email: raw.email,
+            phone: raw.phone,
+            city: raw.city,
+            address: raw.address,
+            gender: raw.gender,
+            spokenLanguage: raw.spokenLanguage,
+            cnamConventioned: raw.cnamConventioned === 'NO' ? 'NO' : 'YES',
+            insuranceConventioned: raw.insuranceConventioned === 'YES' ? 'YES' : 'NO',
+            specialty: raw.specialty,
+            registrationNumber: raw.registrationNumber,
+            yearsExperience: raw.yearsExperience,
+            experienceDetails: raw.experienceDetails,
+            professionalDetails: raw.professionalDetails,
+            profilePhotoFile: this.doctorPhotoFile,
+            diplomas: this.doctorDiplomaFiles
+          } as RegisterDoctorPayload)
+        : await this.authService.register({
+            firstName: raw.firstName,
+            lastName: raw.lastName,
+            email: raw.email,
+            age: raw.age,
+            cin: raw.cin,
+            phone: raw.phone,
+            cinFrontFile: this.cinFrontFile,
+            cinBackFile: this.cinBackFile,
+            faceImageFile: this.capturedFaceFile
+          } as RegisterPayload);
 
-    this.feedback = { kind: result.success ? 'success' : 'error', message: result.message };
-
-    if (!result.success) {
-      return;
-    }
-
-    this.registerForm.reset({
-      firstName: '',
-      lastName: '',
-      email: '',
-      age: 18,
-      phone: '',
-      cin: '',
-      city: '',
-      address: '',
-      gender: '',
-      spokenLanguage: '',
-      cnamConventioned: 'YES',
-      insuranceConventioned: 'NO',
-      specialty: '',
-      registrationNumber: '',
-      yearsExperience: 0,
-      experienceDetails: '',
-      professionalDetails: '',
-      doctorPhotoName: '',
-      cinFrontName: '',
-      cinBackName: '',
-      faceCaptured: false,
-      terms: false
-    });
-
-    this.showLoginForm();
-
-    if (typeof window !== 'undefined') {
-      if (this.postRegisterRedirectTimer) {
-        clearTimeout(this.postRegisterRedirectTimer);
+      if (!result.success) {
+        this.feedback = { kind: 'error', message: result.message };
+        return;
       }
-      this.postRegisterRedirectTimer = setTimeout(() => {
-        window.location.assign('/auth');
-      }, 1200);
+
+      this.registerForm.reset({
+        firstName: '',
+        lastName: '',
+        email: '',
+        age: 18,
+        phone: '',
+        cin: '',
+        city: '',
+        address: '',
+        gender: '',
+        spokenLanguage: '',
+        cnamConventioned: 'YES',
+        insuranceConventioned: 'NO',
+        specialty: '',
+        registrationNumber: '',
+        yearsExperience: 0,
+        experienceDetails: '',
+        professionalDetails: '',
+        doctorPhotoName: '',
+        cinFrontName: '',
+        cinBackName: '',
+        faceCaptured: false,
+        terms: false
+      });
+
+      this.showLoginForm(false);
+      this.feedback = {
+        kind: 'success',
+        message: result.message
+      };
+    } catch (error) {
+      this.feedback = {
+        kind: 'error',
+        message: error instanceof Error ? error.message : 'Une erreur inattendue est survenue.'
+      };
+    } finally {
+      this.isSubmittingRegister = false;
     }
   }
 

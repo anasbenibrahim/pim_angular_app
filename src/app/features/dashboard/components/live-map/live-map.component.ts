@@ -1,4 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   AfterViewInit,
   Component,
@@ -7,6 +7,7 @@ import {
   PLATFORM_ID,
   inject
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import { AdminPatientLocation, AdminService } from '../../../../core/services/admin.service';
 
@@ -27,7 +28,8 @@ interface PatientMapItem extends AdminPatientLocation {
   selector: 'app-live-map',
   templateUrl: './live-map.component.html',
   styleUrl: './live-map.component.css',
-  standalone: false
+  imports: [CommonModule, FormsModule],
+  standalone: true
 })
 export class LiveMapComponent implements AfterViewInit, OnDestroy {
   private readonly adminService = inject(AdminService);

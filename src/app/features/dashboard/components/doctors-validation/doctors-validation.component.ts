@@ -1,4 +1,6 @@
+import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { AdminService, DoctorSignupAdminItem, DoctorSignupStatus } from '../../../../core/services/admin.service';
 
 type DoctorStatusFilter = 'ALL' | DoctorSignupStatus;
@@ -7,7 +9,8 @@ type DoctorStatusFilter = 'ALL' | DoctorSignupStatus;
   selector: 'app-doctors-validation',
   templateUrl: './doctors-validation.component.html',
   styleUrl: './doctors-validation.component.css',
-  standalone: false
+  imports: [CommonModule, FormsModule],
+  standalone: true
 })
 export class DoctorsValidationComponent implements OnInit {
   isLoading = false;

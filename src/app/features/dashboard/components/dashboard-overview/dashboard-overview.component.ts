@@ -1,3 +1,4 @@
+import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { AdminService, AdminUserListItem, UserStats } from '../../../../core/services/admin.service';
 
@@ -36,7 +37,8 @@ interface DonutSegment {
   selector: 'app-dashboard-overview',
   templateUrl: './dashboard-overview.component.html',
   styleUrl: './dashboard-overview.component.css',
-  standalone: false
+  imports: [CommonModule],
+  standalone: true
 })
 export class DashboardOverviewComponent implements OnInit, OnDestroy {
   private refreshTimer: ReturnType<typeof setInterval> | null = null;

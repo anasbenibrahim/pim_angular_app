@@ -1,4 +1,6 @@
+import { CommonModule } from '@angular/common';
 import { Component, OnInit, ChangeDetectorRef, NgZone, OnDestroy } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import {
   DoctorAppointmentItem,
   DoctorAppointmentsService,
@@ -6,29 +8,35 @@ import {
   DoctorAppointmentVisitType
 } from '../../../../core/services/doctor-appointments.service';
 
-type ProcessedStatusFilter = 'ALL' | 'ACCEPTED' | 'REJECTED';
+type AppointmentStatusFilter = 'ALL' | 'PENDING' | 'ACCEPTED' | 'REJECTED';
 
 @Component({
   selector: 'app-doctor-appointments-history',
   templateUrl: './doctor-appointments-history.component.html',
   styleUrl: './doctor-appointments-history.component.css',
-  standalone: false
+  imports: [CommonModule, FormsModule],
+  standalone: true
 })
 export class DoctorAppointmentsHistoryComponent implements OnInit, OnDestroy {
   isLoading = false;
   errorMessage = '';
-  statusFilter: ProcessedStatusFilter = 'ALL';
+  successMessage = '';
+  rejectReason =
+    'Merci de modifier la date ou l\'heure du rendez-vous et de soumettre une nouvelle demande.';
+  statusFilter: AppointmentStatusFilter = 'ALL';
   searchTerm = '';
   selectedAppointmentId: number | null = null;
 
-  readonly statusOptions: Array<{ value: ProcessedStatusFilter; label: string }> = [
+  readonly statusOptions: Array<{ value: AppointmentStatusFilter; label: string }> = [
     { value: 'ALL', label: 'Tous' },
+    { value: 'PENDING', label: 'En attente' },
     { value: 'ACCEPTED', label: 'Acceptés' },
     { value: 'REJECTED', label: 'Rejetés' }
   ];
 
   appointments: DoctorAppointmentItem[] = [];
 
+  private readonly processingIds = new Set<number>();
   private isDestroyed = false;
 
   constructor(
@@ -115,6 +123,10 @@ export class DoctorAppointmentsHistoryComponent implements OnInit, OnDestroy {
     return this.appointments.length;
   }
 
+  get pendingCount(): number {
+    return this.appointments.filter((item) => item.status === 'PENDING').length;
+  }
+
   get acceptedCount(): number {
     return this.appointments.filter((item) => item.status === 'ACCEPTED').length;
   }
@@ -161,14 +173,37 @@ export class DoctorAppointmentsHistoryComponent implements OnInit, OnDestroy {
   selectAppointment(id: number): void {
     this.selectedAppointmentId = id;
     this.errorMessage = '';
+    this.successMessage = '';
   }
 
-  setStatusFilter(filter: ProcessedStatusFilter): void {
+  isProcessing(appointmentId: number): boolean {
+    return this.processingIds.has(appointmentId);
+  }
+
+  async acceptPending(): Promise<void> {
+    const appointment = this.selectedAppointment;
+    if (!appointment || appointment.status !== 'PENDING') {
+      return;
+    }
+    await this.handleDecision(appointment, 'ACCEPTED');
+  }
+
+  async rejectPending(): Promise<void> {
+    const appointment = this.selectedAppointment;
+    if (!appointment || appointment.status !== 'PENDING') {
+      return;
+    }
+    await this.handleDecision(appointment, 'REJECTED');
+  }
+
+  setStatusFilter(filter: AppointmentStatusFilter): void {
     this.statusFilter = filter;
+    this.successMessage = '';
     this.ensureSelection();
   }
 
   onSearchChanged(): void {
+    this.successMessage = '';
     this.ensureSelection();
   }
 
@@ -184,18 +219,17 @@ export class DoctorAppointmentsHistoryComponent implements OnInit, OnDestroy {
     }
     this.runInAngular(() => {
       this.errorMessage = '';
+      this.successMessage = '';
     });
 
     try {
       const items = await this.doctorAppointmentsService.getDoctorAppointments();
       this.runInAngular(() => {
-        this.appointments = (items || [])
-          .filter((item) => item.status === 'ACCEPTED' || item.status === 'REJECTED')
-          .sort((a, b) => {
-            const dateA = this.safeParseDate(a.updatedAt).getTime();
-            const dateB = this.safeParseDate(b.updatedAt).getTime();
-            return dateB - dateA;
-          });
+        this.appointments = (items || []).sort((a, b) => {
+          const dateA = this.safeParseDate(a.updatedAt).getTime();
+          const dateB = this.safeParseDate(b.updatedAt).getTime();
+          return dateB - dateA;
+        });
         this.ensureSelection();
       });
     } catch (error) {
@@ -219,6 +253,65 @@ export class DoctorAppointmentsHistoryComponent implements OnInit, OnDestroy {
     if (!currentExists) {
       this.selectedAppointmentId = filtered[0].id;
     }
+  }
+
+  private async handleDecision(
+    appointment: DoctorAppointmentItem,
+    status: Extract<DoctorAppointmentStatus, 'ACCEPTED' | 'REJECTED'>
+  ): Promise<void> {
+    if (appointment.status !== 'PENDING' || this.processingIds.has(appointment.id)) {
+      return;
+    }
+
+    this.runInAngular(() => {
+      this.processingIds.add(appointment.id);
+      this.errorMessage = '';
+      this.successMessage = '';
+    });
+
+    try {
+      const updated =
+        status === 'ACCEPTED'
+          ? await this.doctorAppointmentsService.acceptAppointment(appointment.id)
+          : await this.doctorAppointmentsService.rejectAppointment(appointment.id, {
+              reason: this.rejectReason.trim() || undefined
+            });
+
+      this.runInAngular(() => {
+        this.upsertAppointment(updated);
+        const patientName = updated.patientName?.trim() || 'le patient';
+        this.successMessage =
+          status === 'ACCEPTED'
+            ? `Rendez-vous accepté. Une confirmation a été envoyée à ${patientName}.`
+            : `Rendez-vous rejeté. Un message a été envoyé à ${patientName}.`;
+        this.ensureSelection();
+      });
+    } catch (error) {
+      this.runInAngular(() => {
+        this.errorMessage = error instanceof Error ? error.message : 'Action impossible pour ce rendez-vous.';
+      });
+    } finally {
+      this.runInAngular(() => {
+        this.processingIds.delete(appointment.id);
+      });
+    }
+  }
+
+  private upsertAppointment(updated: DoctorAppointmentItem): void {
+    const existingIndex = this.appointments.findIndex((item) => item.id === updated.id);
+    if (existingIndex === -1) {
+      this.appointments = [updated, ...this.appointments];
+    } else {
+      const next = [...this.appointments];
+      next[existingIndex] = updated;
+      this.appointments = next;
+    }
+
+    this.appointments = this.appointments.sort((a, b) => {
+      const dateA = this.safeParseDate(a.updatedAt).getTime();
+      const dateB = this.safeParseDate(b.updatedAt).getTime();
+      return dateB - dateA;
+    });
   }
 
   private formatDateTimeValue(value: string, options: Intl.DateTimeFormatOptions): string {

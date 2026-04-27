@@ -190,7 +190,7 @@
         <div class="row two">
           <label>
             <span>Zone</span>
-            <select [ngModel]="ruleZoneId" (ngModelChange)="ruleZoneId = $event">
+            <select [ngModel]="ruleZoneId" (ngModelChange)="onRuleZoneIdChange($event)">
               <option [ngValue]="null">Sélectionner zone</option>
               <option *ngFor="let zone of zones" [ngValue]="zone.id">{{ zone.name }} ({{ zone.shapeType }})</option>
             </select>

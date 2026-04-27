@@ -1,5 +1,6 @@
-import { isPlatformBrowser } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import {
   AdminService,
   AdminUserListItem,
@@ -25,7 +26,8 @@ interface DrawPoint {
   selector: 'app-geofencing-management',
   templateUrl: './geofencing-management.component.html',
   styleUrl: './geofencing-management.component.css',
-  standalone: false
+  imports: [CommonModule, FormsModule],
+  standalone: true
 })
 export class GeofencingManagementComponent implements AfterViewInit, OnDestroy {
   private readonly adminService = inject(AdminService);
@@ -114,6 +116,10 @@ export class GeofencingManagementComponent implements AfterViewInit, OnDestroy {
 
   onShapeChange(): void {
     this.clearDrawing();
+  }
+
+  onRuleZoneIdChange(value: number | null): void {
+    this.ruleZoneId = value;
   }
 
   onMapClickCapture(event: any): void {

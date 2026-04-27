@@ -11,14 +11,16 @@
       </button>
     </header>
 
-    <div *ngIf="feedback" class="feedback" [class.success]="feedback.kind === 'success'" [class.error]="feedback.kind === 'error'">
-      {{ feedback.message }}
-    </div>
+    <ng-container *ngIf="feedback as fb">
+      <div class="feedback" [class.success]="fb.kind === 'success'" [class.error]="fb.kind === 'error'">
+        {{ fb.message }}
+      </div>
+    </ng-container>
 
-    <div class="meta" *ngIf="profile">
+    <div class="meta" *ngIf="profile as prof">
       <div>
         <span>Email</span>
-        <strong>{{ profile.email }}</strong>
+        <strong>{{ prof.email }}</strong>
       </div>
       <div>
         <span>Rôle</span>

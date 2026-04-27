@@ -1,4 +1,6 @@
+import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import {
   ClinicalSentimentAnalysis,
   ClinicalCareService,
@@ -54,7 +56,8 @@ interface ActiveVideoCallState {
   selector: 'app-doctor-clinical-messaging',
   templateUrl: './doctor-clinical-messaging.component.html',
   styleUrl: './doctor-clinical-messaging.component.css',
-  standalone: false
+  imports: [CommonModule, FormsModule],
+  standalone: true
 })
 export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
   searchTerm = '';

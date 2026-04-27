@@ -479,7 +479,10 @@ export class AdminService {
 
   async approveDoctorSignup(signupRequestId: number, payload?: { reason?: string }): Promise<string> {
     try {
-      const headers = this.buildAuthHeaders();
+      if (!Number.isFinite(signupRequestId) || signupRequestId < 1) {
+        throw new Error('Identifiant de demande doctor invalide.');
+      }
+      const headers = this.buildJsonAuthHeaders();
       const body = payload ?? {};
       const response = await firstValueFrom(
         this.http.post<ApiMessageResponse>(`${AdminService.API_BASE_URL}/admin/doctor-signups/${signupRequestId}/approve`, body, {
@@ -494,7 +497,10 @@ export class AdminService {
 
   async rejectDoctorSignup(signupRequestId: number, payload?: { reason?: string }): Promise<string> {
     try {
-      const headers = this.buildAuthHeaders();
+      if (!Number.isFinite(signupRequestId) || signupRequestId < 1) {
+        throw new Error('Identifiant de demande doctor invalide.');
+      }
+      const headers = this.buildJsonAuthHeaders();
       const body = payload ?? {};
       const response = await firstValueFrom(
         this.http.post<ApiMessageResponse>(`${AdminService.API_BASE_URL}/admin/doctor-signups/${signupRequestId}/reject`, body, {
@@ -721,9 +727,13 @@ export class AdminService {
         ? item.diplomaFiles
         : [];
     const yearsExperience = item.yearsExperience ?? item.experienceYears ?? null;
+    const signupRequestId = Number(item.signupRequestId);
+    if (!Number.isFinite(signupRequestId)) {
+      throw new Error('Réponse API invalide: signupRequestId manquant pour une demande doctor.');
+    }
 
     return {
-      signupRequestId: item.signupRequestId,
+      signupRequestId,
       email: item.email,
       nom: item.nom,
       prenom: item.prenom,
@@ -745,6 +755,11 @@ export class AdminService {
     return new HttpHeaders({
       Authorization: `Bearer ${token}`
     });
+  }
+
+  /** Ensures JSON POST bodies are parsed by Spring (some clients omit Content-Type when merging headers). */
+  private buildJsonAuthHeaders(): HttpHeaders {
+    return this.buildAuthHeaders().set('Content-Type', 'application/json');
   }
 
   private extractErrorMessage(error: unknown, fallback: string): string {

@@ -21,10 +21,11 @@ export interface OfflineRequest {
 export class OfflineSyncService {
   private readonly QUEUE_KEY = 'offline_sync_queue';
   private readonly MAX_RETRIES = 3;
-  private isBrowser: boolean;
+  private isBrowser = false;
 
-  private isOnline = new BehaviorSubject<boolean>(this.getInitialOnlineState());
-  private syncQueue = new BehaviorSubject<OfflineRequest[]>(this.loadQueue());
+  /** Field initializers run before constructor; never touch localStorage here (SSR has none). */
+  private isOnline = new BehaviorSubject<boolean>(true);
+  private syncQueue = new BehaviorSubject<OfflineRequest[]>([]);
   private isSyncing = new BehaviorSubject<boolean>(false);
   private syncProgress = new BehaviorSubject<{ completed: number; total: number }>({ completed: 0, total: 0 });
   private syncCompleted$ = new Subject<OfflineRequest>();
@@ -43,6 +44,8 @@ export class OfflineSyncService {
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
     if (this.isBrowser) {
+      this.isOnline.next(this.getInitialOnlineState());
+      this.syncQueue.next(this.loadQueue());
       this.initNetworkListeners();
     }
   }
@@ -88,6 +91,9 @@ export class OfflineSyncService {
    * Ajouter une requête à la queue offline
    */
   public addToQueue(method: string, url: string, body: any, headers: Record<string, string> = {}): void {
+    if (!this.isBrowser) {
+      return;
+    }
     const request: OfflineRequest = {
       id: `${Date.now()}_${Math.random()}`,
       method,
@@ -110,7 +116,7 @@ export class OfflineSyncService {
    * Synchroniser la queue avec le serveur
    */
   public sync(): void {
-    if (this.isSyncing.value || !this.isOnline.value) {
+    if (!this.isBrowser || this.isSyncing.value || !this.isOnline.value) {
       return;
     }
 
@@ -220,6 +226,9 @@ export class OfflineSyncService {
    * Sauvegarder la queue dans localStorage
    */
   private saveQueue(queue: OfflineRequest[]): void {
+    if (!this.isBrowser || typeof localStorage === 'undefined') {
+      return;
+    }
     try {
       localStorage.setItem(this.QUEUE_KEY, JSON.stringify(queue));
     } catch (error) {
@@ -231,6 +240,9 @@ export class OfflineSyncService {
    * Charger la queue depuis localStorage
    */
   private loadQueue(): OfflineRequest[] {
+    if (!this.isBrowser || typeof localStorage === 'undefined') {
+      return [];
+    }
     try {
       const queue = localStorage.getItem(this.QUEUE_KEY);
       return queue ? JSON.parse(queue) : [];
@@ -245,7 +257,9 @@ export class OfflineSyncService {
    */
   public clearQueue(): void {
     this.syncQueue.next([]);
-    localStorage.removeItem(this.QUEUE_KEY);
+    if (this.isBrowser && typeof localStorage !== 'undefined') {
+      localStorage.removeItem(this.QUEUE_KEY);
+    }
   }
 
   /**

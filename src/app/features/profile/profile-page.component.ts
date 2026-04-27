@@ -1,5 +1,6 @@
+import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
-import { FormBuilder, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService, UserProfile } from '../../core/services/auth.service';
 
@@ -9,7 +10,8 @@ type ProfileFeedback = { kind: 'success' | 'error'; message: string } | null;
   selector: 'app-profile-page',
   templateUrl: './profile-page.component.html',
   styleUrl: './profile-page.component.css',
-  standalone: false
+  imports: [CommonModule, ReactiveFormsModule],
+  standalone: true
 })
 export class ProfilePageComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder).nonNullable;

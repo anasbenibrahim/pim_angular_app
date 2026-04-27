@@ -44,7 +44,7 @@
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.9rem;
 }
 
@@ -75,6 +75,14 @@
   border-color: color-mix(in srgb, var(--accent-red) 45%, var(--border-color));
 }
 
+.summary-card.pending {
+  border-color: color-mix(in srgb, var(--brand-primary) 50%, var(--border-color));
+}
+
+.summary-card.all {
+  border-color: color-mix(in srgb, var(--text-muted) 35%, var(--border-color));
+}
+
 .message {
   border-radius: var(--radius-md);
   padding: 0.65rem 0.85rem;
@@ -84,6 +92,12 @@
 .message.error {
   background: color-mix(in srgb, var(--accent-red-bg) 85%, var(--bg-card));
   border: 1px solid var(--accent-red);
+}
+
+.message.success {
+  background: color-mix(in srgb, var(--accent-green-bg) 85%, var(--bg-card));
+  border: 1px solid var(--accent-green);
+  color: var(--text-primary);
 }
 
 .toolbar {
@@ -219,6 +233,12 @@
   color: var(--accent-red);
 }
 
+.status-pending {
+  background: color-mix(in srgb, var(--brand-primary) 12%, var(--bg-card));
+  color: var(--brand-primary);
+  border-color: color-mix(in srgb, var(--brand-primary) 35%, var(--border-color));
+}
+
 .detail-header {
   display: flex;
   align-items: flex-start;
@@ -260,6 +280,78 @@
   line-height: 1.5;
 }
 
+.pending-actions {
+  padding: 0 1.1rem 1.1rem;
+  border-top: 1px solid var(--border-color);
+  margin-top: 0.25rem;
+  padding-top: 1rem;
+}
+
+.pending-actions h5 {
+  margin: 0 0 0.65rem;
+  color: var(--text-heading);
+  font-size: 0.95rem;
+}
+
+.reject-label {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.reject-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  resize: vertical;
+  min-height: 4.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.reject-textarea:disabled {
+  opacity: 0.65;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.btn-accept,
+.btn-reject {
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-accept {
+  background: color-mix(in srgb, var(--accent-green) 18%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--accent-green) 55%, var(--border-color));
+  color: var(--accent-green);
+}
+
+.btn-reject {
+  background: color-mix(in srgb, var(--accent-red) 12%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--accent-red) 50%, var(--border-color));
+  color: var(--accent-red);
+}
+
+.btn-accept:disabled,
+.btn-reject:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .empty-state,
 .loading-panel {
   padding: 1.1rem;
@@ -276,6 +368,12 @@
   }
 
   .toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .summary-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -32,7 +32,12 @@ const routes: Routes = [
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes)],
+  imports: [
+    RouterModule.forRoot(routes),
+    AuthPageComponent,
+    DashboardPageComponent,
+    ProfilePageComponent
+  ],
   exports: [RouterModule]
 })
 export class AppRoutingModule {}

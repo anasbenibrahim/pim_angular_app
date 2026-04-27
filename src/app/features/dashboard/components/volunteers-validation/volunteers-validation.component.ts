@@ -1,4 +1,6 @@
+import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, NgZone, OnDestroy, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { AdminService, VolunteerSignupAdminItem, VolunteerSignupStatus } from '../../../../core/services/admin.service';
 
 type VolunteerStatusFilter = 'ALL' | VolunteerSignupStatus;
@@ -32,7 +34,8 @@ interface VolunteerRequestViewModel {
   selector: 'app-volunteers-validation',
   templateUrl: './volunteers-validation.component.html',
   styleUrl: './volunteers-validation.component.css',
-  standalone: false
+  imports: [CommonModule, FormsModule],
+  standalone: true
 })
 export class VolunteersValidationComponent implements OnInit, OnDestroy {
   private refreshTimer: ReturnType<typeof setInterval> | null = null;

@@ -1,4 +1,6 @@
+import { CommonModule } from '@angular/common';
 import { Component, OnInit, ChangeDetectorRef, NgZone, OnDestroy } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import {
   CarePlanCreatePayload,
   CarePlanItemPayload,
@@ -49,7 +51,8 @@ interface PlanAppointmentDraft {
   selector: 'app-doctor-clinical-workspace',
   templateUrl: './doctor-clinical-workspace.component.html',
   styleUrl: './doctor-clinical-workspace.component.css',
-  standalone: false
+  imports: [CommonModule, FormsModule],
+  standalone: true
 })
 export class DoctorClinicalWorkspaceComponent implements OnInit, OnDestroy {
   activeView: WorkspaceView = 'cards';

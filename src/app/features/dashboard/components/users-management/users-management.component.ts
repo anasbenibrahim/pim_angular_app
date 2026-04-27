@@ -1,4 +1,6 @@
+import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, NgZone, OnDestroy, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import {
   AddictionType,
   AdminCreateUserPayload,
@@ -44,7 +46,8 @@ interface VolunteerAssignmentsGroup {
   selector: 'app-users-management',
   templateUrl: './users-management.component.html',
   styleUrl: './users-management.component.css',
-  standalone: false
+  imports: [CommonModule, FormsModule],
+  standalone: true
 })
 export class UsersManagementComponent implements OnInit, OnDestroy {
   private autoRefreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -77,7 +80,7 @@ export class UsersManagementComponent implements OnInit, OnDestroy {
     password: string;
     nom: string;
     prenom: string;
-    role: Extract<ApiUserRole, 'PATIENT' | 'FAMILY_MEMBER' | 'VOLONTAIRE'>;
+    role: Extract<ApiUserRole, 'PATIENT' | 'FAMILY_MEMBER' | 'VOLONTAIRE' | 'DOCTOR'>;
     age: number;
     referralKey: string;
     dateNaissance: string;

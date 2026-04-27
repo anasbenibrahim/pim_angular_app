@@ -2,12 +2,19 @@
   <header class="doctor-header">
     <div>
       <h3>Historique des rendez-vous</h3>
-      <p>Consultez tous les rendez-vous déjà traités (acceptés ou rejetés).</p>
+      <p>
+        Toutes vos demandes (en attente, acceptées ou rejetées). Vous pouvez accepter ou refuser les demandes en attente
+        directement depuis le détail ci-dessous.
+      </p>
     </div>
     <button type="button" class="refresh-btn" (click)="refresh()" [disabled]="isLoading">Rafraîchir</button>
   </header>
 
   <section class="summary-grid">
+    <article class="summary-card pending">
+      <span>En attente</span>
+      <strong>{{ pendingCount }}</strong>
+    </article>
     <article class="summary-card accepted">
       <span>Acceptés</span>
       <strong>{{ acceptedCount }}</strong>
@@ -17,12 +24,13 @@
       <strong>{{ rejectedCount }}</strong>
     </article>
     <article class="summary-card all">
-      <span>Total traités</span>
+      <span>Total</span>
       <strong>{{ totalCount }}</strong>
     </article>
   </section>
 
   <section *ngIf="errorMessage" class="message error">{{ errorMessage }}</section>
+  <section *ngIf="successMessage" class="message success">{{ successMessage }}</section>
 
   <section class="toolbar">
     <div class="toolbar-search">
@@ -70,7 +78,7 @@
 
       <ng-template #emptyList>
         <div class="empty-state">
-          <p>Aucun rendez-vous traité pour ce filtre.</p>
+          <p>Aucun rendez-vous pour ce filtre.</p>
         </div>
       </ng-template>
     </article>
@@ -90,8 +98,16 @@
           <strong>{{ formatDateTime(selected.appointmentDateTime) }}</strong>
         </div>
         <div class="info-item">
+          <span>Demandé le</span>
+          <strong>{{ formatDateTime(selected.createdAt) }}</strong>
+        </div>
+        <div class="info-item" *ngIf="selected.status !== 'PENDING'">
           <span>Traité le</span>
-          <strong>{{ formatDateTime(selected.updatedAt) }}</strong>
+          <strong>{{ formatDateTime(selected.processedAt || selected.updatedAt) }}</strong>
+        </div>
+        <div class="info-item" *ngIf="selected.status === 'PENDING'">
+          <span>Réponse</span>
+          <strong>En attente de votre décision</strong>
         </div>
         <div class="info-item">
           <span>Type</span>
@@ -116,6 +132,36 @@
       <section class="content-block" *ngIf="selected.decisionReason">
         <h5>Décision envoyée</h5>
         <p>{{ selected.decisionReason }}</p>
+      </section>
+
+      <section class="pending-actions" *ngIf="selected.status === 'PENDING'">
+        <h5>Répondre à la demande</h5>
+        <label class="reject-label" for="history-reject-reason">Motif en cas de refus (optionnel, défaut si vide)</label>
+        <textarea
+          id="history-reject-reason"
+          class="reject-textarea"
+          rows="3"
+          [(ngModel)]="rejectReason"
+          [disabled]="isProcessing(selected.id)"
+        ></textarea>
+        <div class="action-buttons">
+          <button
+            type="button"
+            class="btn-accept"
+            (click)="acceptPending()"
+            [disabled]="isProcessing(selected.id)"
+          >
+            {{ isProcessing(selected.id) ? 'Traitement…' : 'Approuver' }}
+          </button>
+          <button
+            type="button"
+            class="btn-reject"
+            (click)="rejectPending()"
+            [disabled]="isProcessing(selected.id)"
+          >
+            {{ isProcessing(selected.id) ? 'Traitement…' : 'Rejeter' }}
+          </button>
+        </div>
       </section>
     </article>
 

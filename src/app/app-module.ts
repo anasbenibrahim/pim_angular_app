@@ -5,7 +5,9 @@ import {
   withEventReplay
 } from '@angular/platform-browser';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { ServiceWorkerModule } from '@angular/service-worker';
+import { environment } from '../environments/environment';
 
 import { AppRoutingModule } from './app-routing-module';
 import { App } from './app';
@@ -22,6 +24,9 @@ import { DoctorAppointmentsHistoryComponent } from './features/dashboard/compone
 import { DoctorClinicalMessagingComponent } from './features/dashboard/components/doctor-clinical-messaging/doctor-clinical-messaging.component';
 import { DoctorClinicalWorkspaceComponent } from './features/dashboard/components/doctor-clinical-workspace/doctor-clinical-workspace.component';
 import { ProfilePageComponent } from './features/profile/profile-page.component';
+import { OfflineInterceptor } from './core/services/offline-interceptor';
+import { OfflineSyncIndicatorComponent } from './core/components/offline-sync-indicator/offline-sync-indicator.component';
+import { CommonModule } from '@angular/common';
 
 @NgModule({
   declarations: [
@@ -38,10 +43,30 @@ import { ProfilePageComponent } from './features/profile/profile-page.component'
     DoctorClinicalWorkspaceComponent,
     LiveMapComponent,
     GeofencingManagementComponent,
-    ProfilePageComponent
+    ProfilePageComponent,
+    OfflineSyncIndicatorComponent
   ],
-  imports: [BrowserModule, AppRoutingModule, FormsModule, ReactiveFormsModule, HttpClientModule],
-  providers: [provideBrowserGlobalErrorListeners(), provideClientHydration(withEventReplay())],
+  imports: [
+    BrowserModule,
+    CommonModule,
+    AppRoutingModule,
+    FormsModule,
+    ReactiveFormsModule,
+    HttpClientModule,
+    ServiceWorkerModule.register('ngsw-worker.js', {
+      enabled: environment.production,
+      registrationStrategy: 'registerWhenStable:30000'
+    })
+  ],
+  providers: [
+    provideBrowserGlobalErrorListeners(),
+    provideClientHydration(withEventReplay()),
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: OfflineInterceptor,
+      multi: true
+    }
+  ],
   bootstrap: [App]
 })
 export class AppModule {}

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone, OnDestroy } from '@angular/core';
 import {
   DoctorAppointmentItem,
   DoctorAppointmentsService,
@@ -14,7 +14,7 @@ type ProcessedStatusFilter = 'ALL' | 'ACCEPTED' | 'REJECTED';
   styleUrl: './doctor-appointments-history.component.css',
   standalone: false
 })
-export class DoctorAppointmentsHistoryComponent implements OnInit {
+export class DoctorAppointmentsHistoryComponent implements OnInit, OnDestroy {
   isLoading = false;
   errorMessage = '';
   statusFilter: ProcessedStatusFilter = 'ALL';
@@ -29,10 +29,48 @@ export class DoctorAppointmentsHistoryComponent implements OnInit {
 
   appointments: DoctorAppointmentItem[] = [];
 
-  constructor(private readonly doctorAppointmentsService: DoctorAppointmentsService) {}
+  private isDestroyed = false;
+
+  constructor(
+    private readonly doctorAppointmentsService: DoctorAppointmentsService,
+    private readonly cdr: ChangeDetectorRef,
+    private readonly ngZone: NgZone
+  ) {}
 
   async ngOnInit(): Promise<void> {
     await this.loadAppointments();
+  }
+
+  ngOnDestroy(): void {
+    this.isDestroyed = true;
+  }
+
+  private runInAngular(fn: () => void): void {
+    if (this.isDestroyed) {
+      return;
+    }
+    this.ngZone.run(() => {
+      try {
+        fn();
+      } catch (err) {
+        console.error('Error in runInAngular callback:', err);
+      } finally {
+        setTimeout(() => {
+          if (!this.isDestroyed) {
+            this.cdr?.detectChanges();
+          }
+        }, 0);
+      }
+    });
+  }
+
+  private safeParseDate(dateStr: string | undefined | null): Date {
+    if (!dateStr) return new Date(0);
+    const isoStr = dateStr.includes(' ') && !dateStr.includes('T') 
+      ? dateStr.replace(' ', 'T') 
+      : dateStr;
+    const d = new Date(isoStr);
+    return isNaN(d.getTime()) ? new Date(0) : d;
   }
 
   get filteredAppointments(): DoctorAppointmentItem[] {
@@ -140,20 +178,34 @@ export class DoctorAppointmentsHistoryComponent implements OnInit {
 
   private async loadAppointments(showLoader = true): Promise<void> {
     if (showLoader) {
-      this.isLoading = true;
+      this.runInAngular(() => {
+        this.isLoading = true;
+      });
     }
-    this.errorMessage = '';
+    this.runInAngular(() => {
+      this.errorMessage = '';
+    });
 
     try {
       const items = await this.doctorAppointmentsService.getDoctorAppointments();
-      this.appointments = items
-        .filter((item) => item.status === 'ACCEPTED' || item.status === 'REJECTED')
-        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-      this.ensureSelection();
+      this.runInAngular(() => {
+        this.appointments = (items || [])
+          .filter((item) => item.status === 'ACCEPTED' || item.status === 'REJECTED')
+          .sort((a, b) => {
+            const dateA = this.safeParseDate(a.updatedAt).getTime();
+            const dateB = this.safeParseDate(b.updatedAt).getTime();
+            return dateB - dateA;
+          });
+        this.ensureSelection();
+      });
     } catch (error) {
-      this.errorMessage = error instanceof Error ? error.message : 'Impossible de charger l’historique des rendez-vous.';
+      this.runInAngular(() => {
+        this.errorMessage = error instanceof Error ? error.message : 'Impossible de charger l’historique des rendez-vous.';
+      });
     } finally {
-      this.isLoading = false;
+      this.runInAngular(() => {
+        this.isLoading = false;
+      });
     }
   }
 

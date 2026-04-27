@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone, OnDestroy } from '@angular/core';
 import {
   DoctorAppointmentItem,
   DoctorAppointmentsService,
@@ -30,7 +30,7 @@ interface StatsChartBar {
   styleUrl: './doctor-dashboard.component.css',
   standalone: false
 })
-export class DoctorDashboardComponent implements OnInit {
+export class DoctorDashboardComponent implements OnInit, OnDestroy {
   isLoading = false;
   errorMessage = '';
   successMessage = '';
@@ -52,11 +52,53 @@ export class DoctorDashboardComponent implements OnInit {
   readonly weekDayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
   private readonly processingIds = new Set<number>();
+  private isDestroyed = false;
 
-  constructor(private readonly doctorAppointmentsService: DoctorAppointmentsService) {}
+  constructor(
+    private readonly doctorAppointmentsService: DoctorAppointmentsService,
+    private readonly cdr: ChangeDetectorRef,
+    private readonly ngZone: NgZone
+  ) {}
 
   async ngOnInit(): Promise<void> {
     await this.loadAppointments();
+  }
+
+  ngOnDestroy(): void {
+    this.isDestroyed = true;
+  }
+
+  private runInAngular(fn: () => void): void {
+    if (this.isDestroyed) {
+      return;
+    }
+    this.ngZone.run(() => {
+      try {
+        fn();
+      } catch (err) {
+        console.error('Error in runInAngular callback:', err);
+      } finally {
+        // Force detection with a micro-delay to ensure UI thread is ready
+        setTimeout(() => {
+          if (!this.isDestroyed) {
+            this.cdr?.detectChanges();
+          }
+        }, 0);
+      }
+    });
+  }
+
+  /**
+   * Safely parses a date string from the backend (handling potential space/T mismatch)
+   */
+  private safeParseDate(dateStr: string | undefined | null): Date {
+    if (!dateStr) return new Date(0);
+    // Convert "YYYY-MM-DD HH:mm:ss" to "YYYY-MM-DDTHH:mm:ss" for cross-browser compatibility
+    const isoStr = dateStr.includes(' ') && !dateStr.includes('T') 
+      ? dateStr.replace(' ', 'T') 
+      : dateStr;
+    const d = new Date(isoStr);
+    return isNaN(d.getTime()) ? new Date(0) : d;
   }
 
   get filteredAppointments(): DoctorAppointmentItem[] {
@@ -313,20 +355,32 @@ export class DoctorDashboardComponent implements OnInit {
 
   private async loadAppointments(showLoader = true): Promise<void> {
     if (showLoader) {
-      this.isLoading = true;
+      this.runInAngular(() => {
+        this.isLoading = true;
+      });
     }
-    this.errorMessage = '';
+    this.runInAngular(() => {
+      this.errorMessage = '';
+    });
 
     try {
       const items = await this.doctorAppointmentsService.getDoctorAppointments();
-      this.appointments = items.sort((a, b) => {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      this.runInAngular(() => {
+        this.appointments = (items || []).sort((a, b) => {
+          const dateA = this.safeParseDate(a.createdAt).getTime();
+          const dateB = this.safeParseDate(b.createdAt).getTime();
+          return dateB - dateA;
+        });
+        this.ensureSelection();
       });
-      this.ensureSelection();
     } catch (error) {
-      this.errorMessage = error instanceof Error ? error.message : 'Impossible de charger les rendez-vous.';
+      this.runInAngular(() => {
+        this.errorMessage = error instanceof Error ? error.message : 'Impossible de charger les rendez-vous.';
+      });
     } finally {
-      this.isLoading = false;
+      this.runInAngular(() => {
+        this.isLoading = false;
+      });
     }
   }
 
@@ -338,9 +392,11 @@ export class DoctorDashboardComponent implements OnInit {
       return;
     }
 
-    this.processingIds.add(appointment.id);
-    this.errorMessage = '';
-    this.successMessage = '';
+    this.runInAngular(() => {
+      this.processingIds.add(appointment.id);
+      this.errorMessage = '';
+      this.successMessage = '';
+    });
 
     try {
       const updated =
@@ -350,21 +406,27 @@ export class DoctorDashboardComponent implements OnInit {
               reason: this.rejectReason.trim() || undefined
             });
 
-      this.upsertAppointment(updated);
-      const patientName = updated.patientName?.trim() || 'le patient';
-      this.successMessage =
-        status === 'ACCEPTED'
-          ? `Rendez-vous accepté. Un email de confirmation a été envoyé à ${patientName}.`
-          : `Rendez-vous rejeté. Un email de refus a été envoyé à ${patientName}.`;
-      this.ensureSelection();
+      this.runInAngular(() => {
+        this.upsertAppointment(updated);
+        const patientName = updated.patientName?.trim() || 'le patient';
+        this.successMessage =
+          status === 'ACCEPTED'
+            ? `Rendez-vous accepté. Un email de confirmation a été envoyé à ${patientName}.`
+            : `Rendez-vous rejeté. Un email de refus a été envoyé à ${patientName}.`;
+        this.ensureSelection();
+      });
 
       if (typeof window !== 'undefined') {
         window.location.reload();
       }
     } catch (error) {
-      this.errorMessage = error instanceof Error ? error.message : 'Action impossible pour ce rendez-vous.';
+      this.runInAngular(() => {
+        this.errorMessage = error instanceof Error ? error.message : 'Action impossible pour ce rendez-vous.';
+      });
     } finally {
-      this.processingIds.delete(appointment.id);
+      this.runInAngular(() => {
+        this.processingIds.delete(appointment.id);
+      });
     }
   }
 
@@ -379,7 +441,9 @@ export class DoctorDashboardComponent implements OnInit {
     }
 
     this.appointments = this.appointments.sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      const dateA = this.safeParseDate(a.createdAt).getTime();
+      const dateB = this.safeParseDate(b.createdAt).getTime();
+      return dateB - dateA;
     });
   }
 
@@ -403,8 +467,8 @@ export class DoctorDashboardComponent implements OnInit {
         continue;
       }
 
-      const parsed = new Date(appointment.appointmentDateTime);
-      if (Number.isNaN(parsed.getTime())) {
+      const parsed = this.safeParseDate(appointment.appointmentDateTime);
+      if (parsed.getTime() === 0) {
         continue;
       }
 

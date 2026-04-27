@@ -4,11 +4,41 @@ import { firstValueFrom } from 'rxjs';
 import { ApiConfig } from '../config/api.config';
 import { AuthService } from './auth.service';
 
-export type ClinicalMessageTemplate = 'RECHUTE' | 'RELAPSE' | 'CRAVING' | 'MOTIVATION' | 'DETRESSE' | 'INFO' | 'GENERAL';
+export type ClinicalMessageTemplate =
+  | 'RECHUTE'
+  | 'RELAPSE'
+  | 'CRAVING'
+  | 'MOTIVATION'
+  | 'DETRESSE'
+  | 'INFO'
+  | 'GENERAL'
+  | 'VIDEO_CALL_REQUEST'
+  | 'VIDEO_CALL_ACCEPTED'
+  | 'VIDEO_CALL_REJECTED'
+  | 'VIDEO_CALL_SCHEDULED';
 export type ClinicalTaskStatus = 'PENDING' | 'COMPLETED';
 export type CarePlanStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED';
 export type CarePlanItemType = 'GOAL' | 'APPOINTMENT' | 'TASK';
 export type ClinicalRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type SentimentEmotion = 'STRESS' | 'CRAVING' | 'MOTIVATION' | 'NORMAL';
+export type SentimentSeverity = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface ClinicalSentimentAnalysis {
+  emotion: SentimentEmotion;
+  score: number;
+  severity: SentimentSeverity;
+  recommendation: string;
+}
+
+export interface ClinicalSentimentHistoryItem {
+  messageId: number;
+  emotion: SentimentEmotion;
+  score: number;
+  severity: SentimentSeverity;
+  recommendation: string;
+  patientSuggestion: string;
+  createdAt: string;
+}
 
 export interface ClinicalMessageAttachment {
   name: string;
@@ -30,6 +60,8 @@ export interface ClinicalMessageItem {
   delivered?: boolean | null;
   readAt?: string | null;
   attachment?: ClinicalMessageAttachment | null;
+  sentimentAnalysis?: ClinicalSentimentAnalysis | null;
+  patientSuggestion?: string | null;
 }
 
 export interface ClinicalMessageCreatePayload {
@@ -282,6 +314,67 @@ export interface ClinicalMedicalReport {
   clinicianSummary: string;
 }
 
+export interface AiDiagnosisSuggestion {
+  diagnosis: string;
+  probability: number;
+  icd11Code: string;
+  evidence: string[];
+  tests: string[];
+  source?: string | null;
+}
+
+export interface AiDiagnosisResponse {
+  diagnoses: AiDiagnosisSuggestion[];
+  disclaimer: string;
+  processingTimeMs: number;
+}
+
+export interface AiUrgencyAnalysisResponse {
+  urgencyLevel: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+  confidence: number;
+  recommendedAction: string;
+  reasoning: string;
+  triggeredKeywords: string[];
+  requiresHumanReview: boolean;
+  processingTimeMs?: number;
+}
+
+export interface AiRiskFactor {
+  factor: string;
+  weight: number;
+  description: string;
+}
+
+export interface AiIntervention {
+  type: string;
+  description: string;
+  priority: string;
+}
+
+export interface AiCompliancePredictionResponse {
+  riskLevel: string;
+  adherenceProbability: number;
+  riskFactors: AiRiskFactor[];
+  suggestedInterventions: AiIntervention[];
+  nextAssessmentDate: string;
+}
+
+export interface AiSummaryResponse {
+  summaryId: string;
+  generatedAt: string;
+  summary: string;
+  wordCount: number;
+  format: string;
+  processingTimeMs: number;
+}
+
+export interface AiChatbotResponse {
+  message: string;
+  triageAction: string;
+  nextQuestion: string;
+  processingTimeMs: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ClinicalCareService {
   private static get API_BASE_URL(): string {
@@ -322,6 +415,13 @@ export class ClinicalCareService {
     if (typeof params.doctorId === 'number') query.set('doctorId', String(params.doctorId));
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return this.get<ClinicalMessageItem[]>(`/clinical/messages/thread${suffix}`, 'Impossible de charger l’historique de messagerie.');
+  }
+
+  async getSentimentHistory(patientId: number): Promise<ClinicalSentimentHistoryItem[]> {
+    return this.get<ClinicalSentimentHistoryItem[]>(
+      `/clinical/messages/sentiment-history?patientId=${patientId}`,
+      'Impossible de charger l’historique émotionnel.'
+    );
   }
 
   async upsertConsultationNote(appointmentId: number, payload: ConsultationNotePayload): Promise<ConsultationNoteItem> {
@@ -444,6 +544,75 @@ export class ClinicalCareService {
     return this.get<ClinicalMedicalReport>(
       `/clinical/patients/${patientId}/medical-report`,
       'Impossible de charger le rapport médical du patient.'
+    );
+  }
+
+  async suggestDifferentialDiagnosis(payload: {
+    patientId: string;
+    symptoms: string[];
+    vitalSigns?: Record<string, unknown>;
+    medicalHistory?: string[];
+    age?: string;
+    gender?: string;
+  }): Promise<AiDiagnosisResponse> {
+    return this.post<AiDiagnosisResponse>(
+      '/ai/diagnosis/suggest',
+      payload,
+      'Impossible de générer des suggestions de diagnostic.'
+    );
+  }
+
+  async analyzeUrgency(payload: {
+    patientId: string;
+    doctorId?: string;
+    messageContent: string;
+  }): Promise<AiUrgencyAnalysisResponse> {
+    return this.post<AiUrgencyAnalysisResponse>(
+      '/ai/analysis/message',
+      payload,
+      'Impossible d’analyser l’urgence du message.'
+    );
+  }
+
+  async predictCompliance(payload: {
+    carePlanId: string;
+    patientId: string;
+    daysSinceLastMessage: number;
+    missedAppointments: number;
+    recentMessages: string[];
+    missedHomeVisits: number;
+  }): Promise<AiCompliancePredictionResponse> {
+    return this.post<AiCompliancePredictionResponse>(
+      '/ai/compliance/predict',
+      payload,
+      'Impossible de prédire la conformité du patient.'
+    );
+  }
+
+  async generatePatientSummary(payload: {
+    patientId: string;
+    patientName: string;
+    age: number;
+    conditions: string;
+    medications: string;
+    recentIssues: string;
+  }): Promise<AiSummaryResponse> {
+    return this.post<AiSummaryResponse>(
+      '/ai/summary/generate',
+      payload,
+      'Impossible de générer le résumé patient.'
+    );
+  }
+
+  async sendChatbotMessage(payload: {
+    sessionId: string;
+    patientId: string;
+    message: string;
+  }): Promise<AiChatbotResponse> {
+    return this.post<AiChatbotResponse>(
+      '/ai/chatbot/message',
+      payload,
+      'Impossible d’envoyer le message au chatbot IA.'
     );
   }
 

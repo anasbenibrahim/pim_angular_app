@@ -1,12 +1,19 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
 import {
+  ClinicalSentimentAnalysis,
   ClinicalCareService,
+  ClinicalSentimentHistoryItem,
   ClinicalMessageAttachment,
   ClinicalMessageItem,
   ClinicalMessageTemplate,
-  InAppNotificationItem
+  InAppNotificationItem,
+  SentimentSeverity
 } from '../../../../core/services/clinical-care.service';
-import { DoctorAppointmentItem, DoctorAppointmentsService } from '../../../../core/services/doctor-appointments.service';
+import {
+  DoctorAppointmentItem,
+  DoctorAppointmentsService,
+  VideoCallStatusResponse
+} from '../../../../core/services/doctor-appointments.service';
 
 type MessageContext = 'RECHUTE' | 'CRAVING' | 'MOTIVATION' | 'DETRESSE' | 'INFO';
 
@@ -29,6 +36,18 @@ interface ChatMessageGroup {
 interface SmartTemplateSuggestion {
   context: MessageContext;
   value: string;
+}
+
+interface PendingVideoCallRequest {
+  appointmentId: number;
+  requestedAt: string;
+  reason: string;
+}
+
+interface ActiveVideoCallState {
+  roomId: string;
+  scheduledAt: string;
+  appointmentId: number;
 }
 
 @Component({
@@ -79,14 +98,24 @@ export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
   patients: ChatPatientItem[] = [];
   selectedPatientId: number | null = null;
   thread: ClinicalMessageItem[] = [];
+  sentimentHistory: ClinicalSentimentHistoryItem[] = [];
   notifications: InAppNotificationItem[] = [];
+  pendingVideoCall: PendingVideoCallRequest | null = null;
+  activeVideoCall: ActiveVideoCallState | null = null;
+  videoCallStatusLabel = '';
+  proposedVideoCallDateTimeLocal = '';
+  acceptVideoCallDateTimeLocal = '';
+  videoCallDecisionNote = '';
 
   private refreshTimer: number | null = null;
   private notificationTimer: number | null = null;
+  private isDestroyed = false;
 
   constructor(
     private readonly clinicalCareService: ClinicalCareService,
-    private readonly doctorAppointmentsService: DoctorAppointmentsService
+    private readonly doctorAppointmentsService: DoctorAppointmentsService,
+    private readonly cdr: ChangeDetectorRef,
+    private readonly ngZone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -104,6 +133,7 @@ export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.isDestroyed = true;
     if (this.refreshTimer !== null) {
       window.clearInterval(this.refreshTimer);
       this.refreshTimer = null;
@@ -112,6 +142,34 @@ export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
       window.clearInterval(this.notificationTimer);
       this.notificationTimer = null;
     }
+  }
+
+  private runInAngular(fn: () => void): void {
+    if (this.isDestroyed) {
+      return;
+    }
+    this.ngZone.run(() => {
+      try {
+        fn();
+      } catch (err) {
+        console.error('Error in runInAngular callback:', err);
+      } finally {
+        setTimeout(() => {
+          if (!this.isDestroyed) {
+            this.cdr?.detectChanges();
+          }
+        }, 0);
+      }
+    });
+  }
+
+  private safeParseDate(dateStr: string | undefined | null): Date {
+    if (!dateStr) return new Date(0);
+    const isoStr = dateStr.includes(' ') && !dateStr.includes('T') 
+      ? dateStr.replace(' ', 'T') 
+      : dateStr;
+    const d = new Date(isoStr);
+    return isNaN(d.getTime()) ? new Date(0) : d;
   }
 
   get selectedPatient(): ChatPatientItem | null {
@@ -172,32 +230,68 @@ export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
     }));
   }
 
+  get latestSentimentHistory(): ClinicalSentimentHistoryItem[] {
+    return [...this.sentimentHistory]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 8);
+  }
+
+  get highSentimentCount(): number {
+    return this.sentimentHistory.filter((item) => item.severity === 'HIGH').length;
+  }
+
+  get sentimentTrendLabel(): string {
+    const items = this.latestSentimentHistory;
+    if (items.length === 0) {
+      return 'Aucune donnée';
+    }
+
+    const current = items[0];
+    if (current.severity === 'HIGH') {
+      return 'Vigilance élevée';
+    }
+    if (current.severity === 'MEDIUM') {
+      return 'Vigilance modérée';
+    }
+    return 'État stable';
+  }
+
   async loadAcceptedPatients(): Promise<void> {
-    this.isPatientsLoading = true;
-    this.errorMessage = '';
+    this.runInAngular(() => {
+      this.isPatientsLoading = true;
+      this.errorMessage = '';
+    });
 
     try {
       const appointments = await this.doctorAppointmentsService.getDoctorAppointments();
-      this.patients = this.buildAcceptedPatients(appointments);
+      this.runInAngular(() => {
+        this.patients = this.buildAcceptedPatients(appointments || []);
 
-      if (this.patients.length === 0) {
-        this.selectedPatientId = null;
-        this.thread = [];
-        return;
+        if (this.patients.length === 0) {
+          this.selectedPatientId = null;
+          this.thread = [];
+          this.sentimentHistory = [];
+        } else {
+          const hasSelected = this.selectedPatientId !== null
+            && this.patients.some((item) => item.patientId === this.selectedPatientId);
+
+          if (!hasSelected) {
+            this.selectedPatientId = this.patients[0].patientId;
+          }
+        }
+      });
+      
+      if (this.patients.length > 0) {
+        await this.loadThread(true);
       }
-
-      const hasSelected = this.selectedPatientId !== null
-        && this.patients.some((item) => item.patientId === this.selectedPatientId);
-
-      if (!hasSelected) {
-        this.selectedPatientId = this.patients[0].patientId;
-      }
-
-      await this.loadThread(true);
     } catch (error) {
-      this.errorMessage = error instanceof Error ? error.message : 'Impossible de charger les patients avec RDV accepté.';
+      this.runInAngular(() => {
+        this.errorMessage = error instanceof Error ? error.message : 'Impossible de charger les patients avec RDV accepté.';
+      });
     } finally {
-      this.isPatientsLoading = false;
+      this.runInAngular(() => {
+        this.isPatientsLoading = false;
+      });
     }
   }
 
@@ -212,28 +306,136 @@ export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
   async loadThread(silent = false): Promise<void> {
     const patientId = this.selectedPatientId;
     if (patientId === null) {
-      if (!silent) {
-        this.errorMessage = 'Sélectionnez un patient pour ouvrir la messagerie.';
-      }
-      this.thread = [];
+      this.runInAngular(() => {
+        if (!silent) {
+          this.errorMessage = 'Sélectionnez un patient pour ouvrir la messagerie.';
+        }
+        this.thread = [];
+        this.sentimentHistory = [];
+      });
       return;
     }
 
     if (!silent) {
-      this.isLoading = true;
-      this.errorMessage = '';
+      this.runInAngular(() => {
+        this.isLoading = true;
+        this.errorMessage = '';
+      });
     }
 
     try {
-      this.thread = await this.clinicalCareService.getThread({ patientId });
+      const [thread, history, appointments] = await Promise.all([
+        this.clinicalCareService.getThread({ patientId }),
+        this.clinicalCareService.getSentimentHistory(patientId),
+        this.doctorAppointmentsService.getDoctorAppointments()
+      ]);
+      const pendingVideoCall = this.resolvePendingVideoCallRequest(patientId, appointments);
+      const candidateActiveVideoCall = this.resolveActiveVideoCall(patientId, appointments);
+      const activeVideoCall = await this.resolveConfirmedActiveVideoCall(candidateActiveVideoCall);
+      
+      this.runInAngular(() => {
+        this.thread = thread;
+        this.sentimentHistory = history;
+        this.pendingVideoCall = pendingVideoCall;
+        this.activeVideoCall = activeVideoCall;
+        this.videoCallStatusLabel = this.activeVideoCall
+          ? 'En direct'
+          : (candidateActiveVideoCall ? 'Terminé' : 'Aucun appel actif');
+      });
     } catch (error) {
       if (!silent) {
-        this.errorMessage = error instanceof Error ? error.message : 'Impossible de charger la conversation.';
+        this.runInAngular(() => {
+          this.errorMessage = error instanceof Error ? error.message : 'Impossible de charger la conversation.';
+        });
       }
     } finally {
       if (!silent) {
-        this.isLoading = false;
+        this.runInAngular(() => {
+          this.isLoading = false;
+        });
       }
+    }
+  }
+
+  async acceptPendingVideoCall(): Promise<void> {
+    if (!this.pendingVideoCall) {
+      return;
+    }
+    this.isSending = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+    try {
+      const iso = this.acceptVideoCallDateTimeLocal
+        ? this.toIsoFromDatetimeLocal(this.acceptVideoCallDateTimeLocal)
+        : null;
+      await this.doctorAppointmentsService.acceptVideoCallRequest(
+        this.pendingVideoCall.appointmentId,
+        iso ?? undefined
+      );
+      this.acceptVideoCallDateTimeLocal = '';
+      await this.loadThread();
+      this.successMessage = 'Demande d\'appel vidéo acceptée — appel activé pour le patient.';
+    } catch (error) {
+      this.errorMessage = error instanceof Error ? error.message : 'Impossible d\'accepter la demande d\'appel vidéo.';
+    } finally {
+      this.isSending = false;
+    }
+  }
+
+  async rejectPendingVideoCall(): Promise<void> {
+    if (!this.pendingVideoCall) {
+      return;
+    }
+    this.isSending = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+    try {
+      await this.doctorAppointmentsService.rejectVideoCallRequest(
+        this.pendingVideoCall.appointmentId,
+        this.videoCallDecisionNote.trim() || undefined
+      );
+      this.videoCallDecisionNote = '';
+      await this.loadThread();
+      this.successMessage = 'Demande d’appel vidéo rejetée.';
+    } catch (error) {
+      this.errorMessage = error instanceof Error ? error.message : 'Impossible de rejeter la demande d’appel vidéo.';
+    } finally {
+      this.isSending = false;
+    }
+  }
+
+  async proposeAlternativeVideoCall(): Promise<void> {
+    if (!this.pendingVideoCall) {
+      return;
+    }
+    const localValue = this.proposedVideoCallDateTimeLocal.trim();
+    if (!localValue) {
+      this.errorMessage = 'Choisissez une date/heure pour proposer un autre créneau.';
+      return;
+    }
+    const iso = this.toIsoFromDatetimeLocal(localValue);
+    if (!iso) {
+      this.errorMessage = 'Date/heure invalide.';
+      return;
+    }
+
+    this.isSending = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+    try {
+      await this.doctorAppointmentsService.proposeVideoCallAlternative(
+        this.pendingVideoCall.appointmentId,
+        iso,
+        this.videoCallDecisionNote.trim() || undefined
+      );
+      this.proposedVideoCallDateTimeLocal = '';
+      this.videoCallDecisionNote = '';
+      await this.loadThread();
+      this.successMessage = 'Nouveau créneau proposé (appel non activé).';
+    } catch (error) {
+      this.errorMessage = error instanceof Error ? error.message : 'Impossible de proposer un autre créneau.';
+    } finally {
+      this.isSending = false;
     }
   }
 
@@ -383,11 +585,11 @@ export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
 
   contextBadgeLabel(message: ClinicalMessageItem): string {
     const context = this.resolveMessageContext(message);
-    if (context === 'RECHUTE') return '🔴 Rechute';
-    if (context === 'CRAVING') return '⚠️ Craving';
-    if (context === 'DETRESSE') return '😟 Détresse';
-    if (context === 'MOTIVATION') return '🟢 Motivation';
-    return '❓ Info';
+    if (context === 'RECHUTE') return 'Rechute';
+    if (context === 'CRAVING') return 'Craving';
+    if (context === 'DETRESSE') return 'Détresse';
+    if (context === 'MOTIVATION') return 'Motivation';
+    return 'Info';
   }
 
   contextBadgeClass(message: ClinicalMessageItem): string {
@@ -397,7 +599,7 @@ export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
 
   sentIndicator(message: ClinicalMessageItem): string {
     if (this.isMine(message)) {
-      return message.readAt ? '👁️' : '✔️';
+      return message.readAt ? 'ri-check-double-line' : 'ri-check-line';
     }
     return '';
   }
@@ -407,6 +609,48 @@ export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
       return '';
     }
     return message.readAt ? 'Lu' : 'Envoyé';
+  }
+
+  patientMessageAnalysis(message: ClinicalMessageItem): ClinicalSentimentAnalysis | null {
+    if (this.isMine(message)) {
+      return null;
+    }
+    return message.sentimentAnalysis ?? null;
+  }
+
+  severityClass(severity: SentimentSeverity): string {
+    if (severity === 'HIGH') return 'sev-high';
+    if (severity === 'MEDIUM') return 'sev-medium';
+    return 'sev-low';
+  }
+
+  severityEmoji(severity: SentimentSeverity): string {
+    if (severity === 'HIGH') return 'ri-alert-line';
+    if (severity === 'MEDIUM') return 'ri-error-warning-line';
+    return 'ri-checkbox-circle-line';
+  }
+
+  formatSentimentScore(score: number | null | undefined): string {
+    if (typeof score !== 'number' || Number.isNaN(score)) {
+      return '0.00';
+    }
+    return score.toFixed(2);
+  }
+
+  sentimentBarWidth(score: number | null | undefined): number {
+    if (typeof score !== 'number' || Number.isNaN(score)) {
+      return 0;
+    }
+    const bounded = Math.max(0, Math.min(1, score));
+    return Math.round(bounded * 100);
+  }
+
+  emotionLabel(emotion: string | null | undefined): string {
+    const normalized = (emotion || '').toUpperCase();
+    if (normalized === 'CRAVING') return 'CRAVING';
+    if (normalized === 'STRESS') return 'STRESS';
+    if (normalized === 'MOTIVATION') return 'MOTIVATION';
+    return 'NORMAL';
   }
 
   attachmentUrl(path: string): string {
@@ -460,6 +704,9 @@ export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
     if (template === 'INFO' || template === 'GENERAL') {
       return 'INFO';
     }
+    if (template.startsWith('VIDEO_CALL_')) {
+      return 'INFO';
+    }
     return this.detectContext(message.content || '');
   }
 
@@ -486,14 +733,114 @@ export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
       }
 
       existing.appointmentCount += 1;
-      if (new Date(item.appointmentDateTime).getTime() > new Date(existing.lastAppointmentDateTime).getTime()) {
+      const dateCurrent = this.safeParseDate(item.appointmentDateTime).getTime();
+      const dateExisting = this.safeParseDate(existing.lastAppointmentDateTime).getTime();
+      if (dateCurrent > dateExisting) {
         existing.lastAppointmentDateTime = item.appointmentDateTime;
         existing.lastReason = item.reason || existing.lastReason;
       }
     }
 
     return Array.from(grouped.values()).sort((a, b) => {
-      return new Date(b.lastAppointmentDateTime).getTime() - new Date(a.lastAppointmentDateTime).getTime();
+      const dateA = this.safeParseDate(a.lastAppointmentDateTime).getTime();
+      const dateB = this.safeParseDate(b.lastAppointmentDateTime).getTime();
+      return dateB - dateA;
     });
+  }
+
+  private resolvePendingVideoCallRequest(patientId: number, appointments: DoctorAppointmentItem[]): PendingVideoCallRequest | null {
+    // Use visitType=VIDEO + status=PENDING only — no fragile text matching
+    const pending = appointments
+      .filter((item) => item.patientId === patientId)
+      .filter((item) => item.status === 'PENDING')
+      .filter((item) => item.visitType === 'VIDEO');
+
+    if (pending.length === 0) {
+      return null;
+    }
+
+    const latest = pending.sort((a, b) => {
+      const dateA = this.safeParseDate(a.createdAt).getTime();
+      const dateB = this.safeParseDate(b.createdAt).getTime();
+      return dateB - dateA;
+    })[0];
+    // Strip backend-injected prefix for clean display
+    const cleanReason = (latest.reason || '').replace(/^Demande d['']appel vid[eé]o\s*:\s*/i, '').trim();
+    return {
+      appointmentId: latest.id,
+      requestedAt: latest.appointmentDateTime,
+      reason: cleanReason
+    };
+  }
+
+  private resolveActiveVideoCall(patientId: number, appointments: DoctorAppointmentItem[]): ActiveVideoCallState | null {
+    const now = new Date();
+    const videoAppt = appointments
+      .filter((item) => item.patientId === patientId)
+      .filter((item) => item.status === 'ACCEPTED')
+      .filter((item) => item.visitType === 'VIDEO')
+      .filter((item) => !!(item as any).videoCallEnabled)
+      .filter((item) => !!(item as any).videoCallRoomId)
+      .filter((item) => {
+        const scheduled = new Date((item as any).videoCallScheduledAt);
+        if (isNaN(scheduled.getTime())) return false;
+        const start = new Date(scheduled.getTime() - 5 * 60 * 1000);
+        const end = new Date(scheduled.getTime() + 60 * 60 * 1000);
+        return now >= start && now <= end;
+      });
+
+    if (videoAppt.length === 0) return null;
+    const appt = videoAppt[0] as any;
+    return {
+      roomId: appt.videoCallRoomId,
+      scheduledAt: appt.videoCallScheduledAt,
+      appointmentId: appt.id
+    };
+  }
+
+  private async resolveConfirmedActiveVideoCall(candidate: ActiveVideoCallState | null): Promise<ActiveVideoCallState | null> {
+    if (!candidate) {
+      return null;
+    }
+    try {
+      const status: VideoCallStatusResponse = await this.doctorAppointmentsService.getVideoCallStatus(candidate.appointmentId);
+      if (status.active !== true) {
+        return null;
+      }
+      const roomId = (status.roomId || '').trim();
+      if (!roomId) {
+        return null;
+      }
+      return {
+        appointmentId: candidate.appointmentId,
+        roomId,
+        scheduledAt: status.scheduledAt || candidate.scheduledAt
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  joinActiveVideoCall(): void {
+    const roomId = this.activeVideoCall?.roomId;
+    if (!roomId) return;
+    window.open(`https://meet.jit.si/${roomId}`, '_blank', 'noopener,noreferrer');
+  }
+
+  getVideoCallLabel(templateType: string | null | undefined): string {
+    const t = (templateType || '').toUpperCase();
+    if (t === 'VIDEO_CALL_REQUEST') return 'Demande d\'appel vidéo';
+    if (t === 'VIDEO_CALL_ACCEPTED') return 'Appel vidéo accepté';
+    if (t === 'VIDEO_CALL_REJECTED') return 'Appel vidéo rejeté';
+    if (t === 'VIDEO_CALL_SCHEDULED') return 'Nouveau créneau proposé';
+    return 'Vidéo';
+  }
+
+  private toIsoFromDatetimeLocal(value: string): string | null {
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) {
+      return null;
+    }
+    return dt.toISOString();
   }
 }

@@ -194,6 +194,100 @@ select {
   gap: 0.3rem;
 }
 
+.emotion-evolution {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.emotion-head,
+.emotion-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.emotion-head h5 {
+  margin: 0;
+}
+
+.emotion-trend,
+.emotion-stats,
+.emotion-time,
+.emotion-score {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.emotion-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.emotion-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.emotion-item {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-card) 72%, var(--bg-main));
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.emotion-main {
+  font-weight: 600;
+}
+
+.emotion-bar-track {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border-color);
+  overflow: hidden;
+}
+
+.emotion-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-primary) 70%, #0d9488);
+}
+
+.emotion-rec {
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.severity-badge {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.sev-high {
+  border-color: color-mix(in srgb, var(--accent-red) 70%, var(--border-color));
+  color: var(--accent-red);
+  background: color-mix(in srgb, var(--accent-red-bg) 80%, var(--bg-card));
+}
+
+.sev-medium {
+  border-color: color-mix(in srgb, var(--accent-orange) 70%, var(--border-color));
+  color: color-mix(in srgb, var(--accent-orange) 80%, var(--text-primary));
+  background: color-mix(in srgb, var(--accent-orange-bg) 78%, var(--bg-card));
+}
+
+.sev-low {
+  border-color: color-mix(in srgb, var(--accent-green) 70%, var(--border-color));
+  color: var(--accent-green);
+  background: color-mix(in srgb, var(--accent-green-bg) 80%, var(--bg-card));
+}
+
 .message {
   border-radius: var(--radius-md);
   padding: 0.7rem 0.9rem;

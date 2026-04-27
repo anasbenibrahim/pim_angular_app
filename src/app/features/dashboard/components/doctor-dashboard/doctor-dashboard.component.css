@@ -4,14 +4,14 @@
 
 .doctor-dashboard {
   display: grid;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .doctor-header {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 1rem 1.2rem;
+  background: #e8eaee;
+  border: none;
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -30,7 +30,7 @@
 
 .refresh-btn {
   border: 1px solid var(--border-input);
-  background: var(--bg-input);
+  background: transparent;
   color: var(--text-primary);
   border-radius: var(--radius-md);
   padding: 0.45rem 0.8rem;
@@ -64,7 +64,7 @@
 .stats-bars-wrap {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  background: var(--bg-input);
+  background: transparent;
   padding: 0.9rem 0.8rem;
 }
 
@@ -171,7 +171,7 @@
   min-height: 84px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: var(--bg-input);
+  background: transparent;
   padding: 0.35rem;
   display: flex;
   flex-direction: column;
@@ -189,7 +189,7 @@
 }
 
 .day-cell.has-appointments {
-  background: color-mix(in srgb, var(--accent-green-bg) 70%, var(--bg-input));
+  background: color-mix(in srgb, var(--accent-green-bg) 70%, #e8eaee);
   border-color: color-mix(in srgb, var(--accent-green) 45%, var(--border-color));
 }
 
@@ -219,13 +219,13 @@
 }
 
 .day-patient {
-  background: color-mix(in srgb, var(--accent-green-bg) 65%, var(--bg-input));
+  background: color-mix(in srgb, var(--accent-green-bg) 65%, #e8eaee);
   color: var(--text-primary);
   border: 1px solid color-mix(in srgb, var(--accent-green) 35%, var(--border-color));
 }
 
 .day-more {
-  background: color-mix(in srgb, var(--brand-primary-light) 70%, var(--bg-input));
+  background: color-mix(in srgb, var(--brand-primary-light) 70%, #e8eaee);
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
   text-align: center;
@@ -260,7 +260,7 @@
   padding: 0 0.75rem;
   border: 1px solid var(--border-input);
   border-radius: var(--radius-md);
-  background: var(--bg-input);
+  background: transparent;
 }
 
 .toolbar-search i {
@@ -281,7 +281,7 @@
 
 .toolbar select {
   border: 1px solid var(--border-input);
-  background: var(--bg-input);
+  background: transparent;
   color: var(--text-primary);
   border-radius: var(--radius-md);
   padding: 0.45rem 0.7rem;
@@ -294,10 +294,10 @@
 }
 
 .panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  background: #e8eaee;
+  border: none;
+  border-radius: 1rem;
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -450,7 +450,7 @@
 .reject-block textarea {
   border: 1px solid var(--border-input);
   border-radius: var(--radius-md);
-  background: var(--bg-input);
+  background: transparent;
   color: var(--text-primary);
   padding: 0.55rem 0.7rem;
 }
@@ -466,7 +466,7 @@
   border: 1px solid var(--border-input);
   padding: 0.5rem 0.9rem;
   cursor: pointer;
-  background: var(--bg-input);
+  background: transparent;
   color: var(--text-primary);
 }
 

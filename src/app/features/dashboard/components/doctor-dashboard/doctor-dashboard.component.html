@@ -1,5 +1,12 @@
 <section class="doctor-dashboard">
-  <header class="doctor-header">
+  <section *ngIf="errorMessage" class="message error sub-card" style="margin-bottom: 1.5rem; animation: slideDown 0.3s ease;">
+    <i class="ri-error-warning-line"></i> {{ errorMessage }}
+  </section>
+  <section *ngIf="successMessage" class="message success" style="margin-bottom: 1rem; color: #00c853; background: rgba(0, 200, 83, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid #00c853;">
+    {{ successMessage }}
+  </section>
+
+  <header class="doctor-header sub-card">
     <div>
       <h3>Demandes de rendez-vous</h3>
       <p>Consultez, acceptez ou rejetez les demandes envoyées par les patients depuis l'application mobile.</p>
@@ -7,7 +14,7 @@
     <button type="button" class="refresh-btn" (click)="refresh()" [disabled]="isLoading">Rafraîchir</button>
   </header>
 
-  <section class="stats-chart-panel panel">
+  <section class="stats-chart-panel panel sub-card">
     <header class="panel-header stats-chart-header">
       <div>
         <h4>Statistiques</h4>
@@ -30,7 +37,7 @@
     </div>
   </section>
 
-  <section class="panel calendar-panel">
+  <section class="panel calendar-panel sub-card">
     <header class="panel-header calendar-header">
       <div>
         <h4>Calendrier des rendez-vous affectés</h4>
@@ -69,6 +76,4 @@
     </div>
   </section>
 
-  <section *ngIf="errorMessage" class="message error">{{ errorMessage }}</section>
-  <section *ngIf="successMessage" class="message success">{{ successMessage }}</section>
 </section>

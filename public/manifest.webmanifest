@@ -1,0 +1,32 @@
+{
+  "name": "PIM - Care Coordination Platform",
+  "short_name": "PIM",
+  "description": "Platform for coordinating patient care with emotional evolution tracking",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    }
+  ],
+  "theme_color": "#1976d2",
+  "background_color": "#fafafa",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "healthcare"],
+  "screenshots": [
+    {
+      "src": "/assets/images/screenshot1.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/assets/images/screenshot2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ]
+}

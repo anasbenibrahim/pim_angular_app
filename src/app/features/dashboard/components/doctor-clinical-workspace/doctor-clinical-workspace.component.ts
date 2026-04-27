@@ -1,10 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone, OnDestroy } from '@angular/core';
 import {
   CarePlanCreatePayload,
   CarePlanItemPayload,
   CarePlanItemRecord,
+  ClinicalSentimentHistoryItem,
   ClinicalMedicalReport,
-  ClinicalCareService
+  ClinicalCareService,
+  SentimentSeverity,
+  AiDiagnosisResponse,
+  AiUrgencyAnalysisResponse,
+  AiCompliancePredictionResponse,
+  AiSummaryResponse
 } from '../../../../core/services/clinical-care.service';
 import {
   DoctorAppointmentItem,
@@ -45,13 +51,14 @@ interface PlanAppointmentDraft {
   styleUrl: './doctor-clinical-workspace.component.css',
   standalone: false
 })
-export class DoctorClinicalWorkspaceComponent implements OnInit {
+export class DoctorClinicalWorkspaceComponent implements OnInit, OnDestroy {
   activeView: WorkspaceView = 'cards';
   acceptedPatients: AcceptedPatientCard[] = [];
   selectedPatient: AcceptedPatientCard | null = null;
   patientCarePlans: CarePlanItemRecord[] = [];
   selectedPlanId: number | null = null;
   medicalReport: ClinicalMedicalReport | null = null;
+  sentimentHistory: ClinicalSentimentHistoryItem[] = [];
 
   isLoading = false;
   isSubmitting = false;
@@ -83,13 +90,86 @@ export class DoctorClinicalWorkspaceComponent implements OnInit {
   notesBehavioralPrescription = '';
   notesFollowUpDate = '';
 
+  activeAiModule: 'diagnosis' | 'urgency' | 'compliance' | 'summary' | 'chatbot' = 'diagnosis';
+
+  aiDiagnosisSymptoms = '';
+  aiDiagnosisAge = '';
+  aiDiagnosisGender: 'UNKNOWN' | 'FEMALE' | 'MALE' | 'OTHER' = 'UNKNOWN';
+  aiDiagnosisHistory = '';
+  aiDiagnosisLoading = false;
+  aiDiagnosisResult: AiDiagnosisResponse | null = null;
+  aiDiagnosisError = '';
+
+  urgencyMessage = '';
+  urgencyLoading = false;
+  urgencyResult: AiUrgencyAnalysisResponse | null = null;
+  urgencyError = '';
+
+  complianceDaysSinceLastMessage = 0;
+  complianceMissedAppointments = 0;
+  complianceMissedHomeVisits = 0;
+  complianceRecentMessages = '';
+  complianceLoading = false;
+  complianceResult: AiCompliancePredictionResponse | null = null;
+  complianceError = '';
+
+  summaryAge = '';
+  summaryConditions = '';
+  summaryMedications = '';
+  summaryRecentIssues = '';
+  summaryLoading = false;
+  summaryResult: AiSummaryResponse | null = null;
+  summaryError = '';
+
+  chatbotSessionId = 'session-' + Math.random().toString(36).substring(2, 8);
+  chatbotMessage = '';
+  chatbotLoading = false;
+  chatbotError = '';
+  chatbotHistory: Array<{ role: 'user' | 'assistant'; text: string; timestamp: string }> = [];
+
+  private isDestroyed = false;
+
   constructor(
     private readonly clinicalCareService: ClinicalCareService,
-    private readonly doctorAppointmentsService: DoctorAppointmentsService
+    private readonly doctorAppointmentsService: DoctorAppointmentsService,
+    private readonly cdr: ChangeDetectorRef,
+    private readonly ngZone: NgZone
   ) {}
 
   async ngOnInit(): Promise<void> {
     await this.loadAcceptedPatients();
+  }
+
+  ngOnDestroy(): void {
+    this.isDestroyed = true;
+  }
+
+  private runInAngular(fn: () => void): void {
+    if (this.isDestroyed) {
+      return;
+    }
+    this.ngZone.run(() => {
+      try {
+        fn();
+      } catch (err) {
+        console.error('Error in runInAngular callback:', err);
+      } finally {
+        setTimeout(() => {
+          if (!this.isDestroyed) {
+            this.cdr?.detectChanges();
+          }
+        }, 0);
+      }
+    });
+  }
+
+  private safeParseDate(dateStr: string | undefined | null): Date {
+    if (!dateStr) return new Date(0);
+    const isoStr = dateStr.includes(' ') && !dateStr.includes('T') 
+      ? dateStr.replace(' ', 'T') 
+      : dateStr;
+    const d = new Date(isoStr);
+    return isNaN(d.getTime()) ? new Date(0) : d;
   }
 
   get hasPlanEntries(): boolean {
@@ -98,6 +178,32 @@ export class DoctorClinicalWorkspaceComponent implements OnInit {
 
   get selectedPatientAppointments(): DoctorAppointmentItem[] {
     return this.selectedPatient?.appointments ?? [];
+  }
+
+  get latestSentimentHistory(): ClinicalSentimentHistoryItem[] {
+    return [...this.sentimentHistory]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 8);
+  }
+
+  get highSentimentCount(): number {
+    return this.sentimentHistory.filter((item) => item.severity === 'HIGH').length;
+  }
+
+  get sentimentTrendLabel(): string {
+    const items = this.latestSentimentHistory;
+    if (items.length === 0) {
+      return 'Aucune donnée';
+    }
+
+    const current = items[0];
+    if (current.severity === 'HIGH') {
+      return 'Vigilance élevée';
+    }
+    if (current.severity === 'MEDIUM') {
+      return 'Vigilance modérée';
+    }
+    return 'État stable';
   }
 
   get isEditingPlan(): boolean {
@@ -112,6 +218,7 @@ export class DoctorClinicalWorkspaceComponent implements OnInit {
     this.selectedPatient = patient;
     this.activeView = 'plan';
     this.medicalReport = null;
+    this.sentimentHistory = [];
     this.errorMessage = '';
     this.successMessage = '';
     this.resetPlanForm();
@@ -129,6 +236,7 @@ export class DoctorClinicalWorkspaceComponent implements OnInit {
       await this.reloadReportData(patient.id);
     } catch (error) {
       this.medicalReport = null;
+      this.sentimentHistory = [];
       this.patientCarePlans = [];
       this.errorMessage = error instanceof Error ? error.message : 'Impossible de charger le rapport patient.';
     } finally {
@@ -208,6 +316,175 @@ export class DoctorClinicalWorkspaceComponent implements OnInit {
     }
   }
 
+  async generateAiDiagnosis(): Promise<void> {
+    const patient = this.selectedPatient;
+    if (!patient) {
+      return;
+    }
+
+    const symptoms = this.aiDiagnosisSymptoms
+      .split(/[,\n]/)
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
+    if (symptoms.length === 0) {
+      this.aiDiagnosisError = 'Veuillez saisir au moins un symptôme clé.';
+      this.aiDiagnosisResult = null;
+      return;
+    }
+
+    this.aiDiagnosisLoading = true;
+    this.aiDiagnosisError = '';
+    this.aiDiagnosisResult = null;
+
+    try {
+      this.aiDiagnosisResult = await this.clinicalCareService.suggestDifferentialDiagnosis({
+        patientId: String(patient.id),
+        symptoms,
+        medicalHistory: this.aiDiagnosisHistory
+          .split(/[,\n]/)
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0),
+        age: this.aiDiagnosisAge || undefined,
+        gender: this.aiDiagnosisGender,
+        vitalSigns: {}
+      });
+    } catch (error) {
+      this.aiDiagnosisError = error instanceof Error ? error.message : 'Impossible de générer la suggestion IA.';
+      this.aiDiagnosisResult = null;
+    } finally {
+      this.aiDiagnosisLoading = false;
+    }
+  }
+
+  setActiveAiModule(module: 'diagnosis' | 'urgency' | 'compliance' | 'summary' | 'chatbot'): void {
+    this.activeAiModule = module;
+    this.aiDiagnosisError = '';
+    this.urgencyError = '';
+    this.complianceError = '';
+    this.summaryError = '';
+    this.chatbotError = '';
+  }
+
+  async analyzeUrgency(): Promise<void> {
+    const patient = this.selectedPatient;
+    if (!patient || !this.urgencyMessage.trim()) {
+      this.urgencyError = 'Veuillez saisir un message pour l’analyse d’urgence.';
+      this.urgencyResult = null;
+      return;
+    }
+
+    this.urgencyLoading = true;
+    this.urgencyError = '';
+    this.urgencyResult = null;
+
+    try {
+      this.urgencyResult = await this.clinicalCareService.analyzeUrgency({
+        patientId: String(patient.id),
+        doctorId: undefined,
+        messageContent: this.urgencyMessage.trim()
+      });
+    } catch (error) {
+      this.urgencyError = error instanceof Error ? error.message : 'Impossible d’analyser le message.';
+      this.urgencyResult = null;
+    } finally {
+      this.urgencyLoading = false;
+    }
+  }
+
+  async predictCompliance(): Promise<void> {
+    const patient = this.selectedPatient;
+    if (!patient) {
+      this.complianceError = 'Sélectionnez un patient avant d’utiliser la prédiction de conformité.';
+      return;
+    }
+
+    if (!this.selectedPlanId) {
+      this.complianceError = 'Sélectionnez un plan de soin valide avant de prédire la conformité.';
+      return;
+    }
+
+    this.complianceLoading = true;
+    this.complianceError = '';
+    this.complianceResult = null;
+
+    try {
+      this.complianceResult = await this.clinicalCareService.predictCompliance({
+        carePlanId: String(this.selectedPlanId),
+        patientId: String(patient.id),
+        daysSinceLastMessage: this.complianceDaysSinceLastMessage,
+        missedAppointments: this.complianceMissedAppointments,
+        recentMessages: this.complianceRecentMessages
+          .split(/[\n]/)
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0),
+        missedHomeVisits: this.complianceMissedHomeVisits
+      });
+    } catch (error) {
+      this.complianceError = error instanceof Error ? error.message : 'Impossible de prédire la conformité.';
+      this.complianceResult = null;
+    } finally {
+      this.complianceLoading = false;
+    }
+  }
+
+  async generateSummary(): Promise<void> {
+    const patient = this.selectedPatient;
+    if (!patient) {
+      this.summaryError = 'Sélectionnez un patient avant de générer un résumé.';
+      return;
+    }
+
+    this.summaryLoading = true;
+    this.summaryError = '';
+    this.summaryResult = null;
+
+    try {
+      this.summaryResult = await this.clinicalCareService.generatePatientSummary({
+        patientId: String(patient.id),
+        patientName: patient.name,
+        age: Number(this.summaryAge) || 0,
+        conditions: this.summaryConditions.trim(),
+        medications: this.summaryMedications.trim(),
+        recentIssues: this.summaryRecentIssues.trim()
+      });
+    } catch (error) {
+      this.summaryError = error instanceof Error ? error.message : 'Impossible de générer le résumé.';
+      this.summaryResult = null;
+    } finally {
+      this.summaryLoading = false;
+    }
+  }
+
+  async sendChatbotMessage(): Promise<void> {
+    const patient = this.selectedPatient;
+    if (!patient || !this.chatbotMessage.trim()) {
+      this.chatbotError = 'Veuillez saisir un message pour le chatbot IA.';
+      return;
+    }
+
+    this.chatbotLoading = true;
+    this.chatbotError = '';
+
+    const userText = this.chatbotMessage.trim();
+    this.chatbotHistory.push({ role: 'user', text: userText, timestamp: new Date().toLocaleTimeString() });
+    this.chatbotMessage = '';
+
+    try {
+      const response = await this.clinicalCareService.sendChatbotMessage({
+        sessionId: this.chatbotSessionId,
+        patientId: String(patient.id),
+        message: userText
+      });
+
+      this.chatbotHistory.push({ role: 'assistant', text: response.message, timestamp: new Date().toLocaleTimeString() });
+    } catch (error) {
+      this.chatbotError = error instanceof Error ? error.message : 'Impossible de contacter le chatbot IA.';
+    } finally {
+      this.chatbotLoading = false;
+    }
+  }
+
   async addNotesForAppointment(appointmentId: number, currentSummary?: string | null): Promise<void> {
     this.showConsultationNotesModal = true;
     this.notesAppointmentId = appointmentId;
@@ -276,6 +553,7 @@ export class DoctorClinicalWorkspaceComponent implements OnInit {
     this.patientCarePlans = [];
     this.selectedPlanId = null;
     this.medicalReport = null;
+    this.sentimentHistory = [];
     this.closeTaskModal();
     this.closeAppointmentModal();
     this.closeConsultationNotesModal();
@@ -478,6 +756,39 @@ export class DoctorClinicalWorkspaceComponent implements OnInit {
     }).format(new Date(value));
   }
 
+  severityClass(severity: SentimentSeverity): string {
+    if (severity === 'HIGH') return 'sev-high';
+    if (severity === 'MEDIUM') return 'sev-medium';
+    return 'sev-low';
+  }
+
+  severityEmoji(severity: SentimentSeverity): string {
+    if (severity === 'HIGH') return '🔴';
+    if (severity === 'MEDIUM') return '🟠';
+    return '🟢';
+  }
+
+  emotionLabel(emotion: string): string {
+    const normalized = (emotion || '').toUpperCase();
+    if (normalized === 'CRAVING') return 'Craving';
+    if (normalized === 'MOTIVATION') return 'Motivation';
+    if (normalized === 'STRESS') return 'Stress';
+    if (normalized === 'NORMAL') return 'Normal';
+    return emotion || 'Inconnue';
+  }
+
+  formatSentimentScore(score: number): string {
+    if (Number.isNaN(score)) {
+      return '0.00';
+    }
+    return score.toFixed(2);
+  }
+
+  sentimentBarWidth(score: number): number {
+    const normalized = Math.max(0, Math.min(1, score));
+    return normalized * 100;
+  }
+
   carePlanStatusLabel(status: string | null | undefined): string {
     switch ((status ?? '').toUpperCase()) {
       case 'ACTIVE':
@@ -520,22 +831,31 @@ export class DoctorClinicalWorkspaceComponent implements OnInit {
   }
 
   private async reloadReportData(patientId: number): Promise<void> {
-    const [medicalReport, carePlans] = await Promise.all([
+    const [medicalReport, carePlans, sentimentHistory] = await Promise.all([
       this.clinicalCareService.getDoctorMedicalReport(patientId),
-      this.clinicalCareService.getDoctorCarePlans(patientId)
+      this.clinicalCareService.getDoctorCarePlans(patientId),
+      this.clinicalCareService.getSentimentHistory(patientId)
     ]);
     this.medicalReport = medicalReport;
     this.patientCarePlans = carePlans;
+    this.sentimentHistory = sentimentHistory;
   }
 
   private async loadAcceptedPatients(): Promise<void> {
-    this.isLoading = true;
+    this.runInAngular(() => {
+      this.isLoading = true;
+    });
 
     try {
-      const appointments = await this.doctorAppointmentsService.getDoctorAppointments();
+      const items = await this.doctorAppointmentsService.getDoctorAppointments();
+      const appointments = items || [];
       const acceptedAppointments = appointments
         .filter((item) => item.status === 'ACCEPTED')
-        .sort((a, b) => new Date(b.appointmentDateTime).getTime() - new Date(a.appointmentDateTime).getTime());
+        .sort((a, b) => {
+          const dateA = this.safeParseDate(a.appointmentDateTime).getTime();
+          const dateB = this.safeParseDate(b.appointmentDateTime).getTime();
+          return dateB - dateA;
+        });
 
       const grouped = new Map<number, AcceptedPatientCard>();
 
@@ -567,21 +887,27 @@ export class DoctorClinicalWorkspaceComponent implements OnInit {
         }
       }
 
-      this.acceptedPatients = Array.from(grouped.values()).sort((a, b) => {
-        return new Date(b.latestAppointmentAt ?? 0).getTime() - new Date(a.latestAppointmentAt ?? 0).getTime();
-      });
+      this.runInAngular(() => {
+        this.acceptedPatients = Array.from(grouped.values()).sort((a, b) => {
+          return new Date(b.latestAppointmentAt ?? 0).getTime() - new Date(a.latestAppointmentAt ?? 0).getTime();
+        });
 
-      if (this.selectedPatient) {
-        this.selectedPatient = this.acceptedPatients.find((item) => item.id === this.selectedPatient?.id) ?? null;
-        if (!this.selectedPatient) {
-          this.patientCarePlans = [];
-          this.selectedPlanId = null;
+        if (this.selectedPatient) {
+          this.selectedPatient = this.acceptedPatients.find((item) => item.id === this.selectedPatient?.id) ?? null;
+          if (!this.selectedPatient) {
+            this.patientCarePlans = [];
+            this.selectedPlanId = null;
+          }
         }
-      }
+      });
     } catch (error) {
-      this.errorMessage = error instanceof Error ? error.message : 'Impossible de charger les patients acceptés.';
+      this.runInAngular(() => {
+        this.errorMessage = error instanceof Error ? error.message : 'Impossible de charger les patients acceptés.';
+      });
     } finally {
-      this.isLoading = false;
+      this.runInAngular(() => {
+        this.isLoading = false;
+      });
     }
   }
 

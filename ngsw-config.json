@@ -1,0 +1,68 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/index.html",
+          "/manifest.webmanifest",
+          "/**/*.css",
+          "/**/*.js"
+        ]
+      }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "lazy",
+      "resources": {
+        "files": [
+          "/assets/**",
+          "/**/*/images/**",
+          "/**/*/hopi/**"
+        ]
+      }
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "api-cache",
+      "urls": [
+        "/api/**"
+      ],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxAge": "6h",
+        "maxSize": 100
+      }
+    },
+    {
+      "name": "api-freshness",
+      "urls": [
+        "/api/appointments/**",
+        "/api/messages/**",
+        "/api/care-plans/**"
+      ],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "maxAge": "1h",
+        "maxSize": 50,
+        "timeout": "10s"
+      }
+    }
+  ],
+  "navigationUrls": [
+    "/**",
+    "!/**/*.js",
+    "!/**/*.css",
+    "!/**/*.json",
+    "!/**/*${hashes}.*",
+    "!/**/**/.*",
+    "!/**/**/node_modules/**"
+  ]
+}

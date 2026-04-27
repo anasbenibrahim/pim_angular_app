@@ -32,6 +32,7 @@ export interface DoctorAppointmentItem {
 
 export interface DoctorAppointmentDecisionPayload {
   reason?: string;
+  acceptedDateTime?: string;
 }
 
 export interface DoctorManagedAppointmentCreatePayload {
@@ -41,6 +42,16 @@ export interface DoctorManagedAppointmentCreatePayload {
   reason: string;
   notes?: string;
   patientPhone?: string;
+}
+
+export interface VideoCallStatusResponse {
+  appointmentId: number;
+  active: boolean;
+  status: string;
+  roomId?: string | null;
+  scheduledAt?: string | null;
+  doctorName?: string | null;
+  patientName?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -118,6 +129,65 @@ export class DoctorAppointmentsService {
       );
     } catch (error) {
       throw new Error(this.extractErrorMessage(error, 'Impossible de créer le rendez-vous patient.'));
+    }
+  }
+
+  async acceptVideoCallRequest(appointmentId: number, acceptedDateTime?: string): Promise<void> {
+    try {
+      const headers = this.buildAuthHeaders();
+      await firstValueFrom(
+        this.http.post<void>(
+          `${DoctorAppointmentsService.API_BASE_URL}/appointments/${appointmentId}/video-call/accept`,
+          acceptedDateTime ? { acceptedDateTime } : {},
+          { headers }
+        )
+      );
+    } catch (error) {
+      throw new Error(this.extractErrorMessage(error, 'Impossible d’accepter la demande d’appel vidéo.'));
+    }
+  }
+
+  async rejectVideoCallRequest(appointmentId: number, reason?: string): Promise<void> {
+    try {
+      const headers = this.buildAuthHeaders();
+      await firstValueFrom(
+        this.http.post<void>(
+          `${DoctorAppointmentsService.API_BASE_URL}/appointments/${appointmentId}/video-call/reject`,
+          reason ? { reason } : {},
+          { headers }
+        )
+      );
+    } catch (error) {
+      throw new Error(this.extractErrorMessage(error, 'Impossible de rejeter la demande d’appel vidéo.'));
+    }
+  }
+
+  async proposeVideoCallAlternative(appointmentId: number, acceptedDateTime: string, reason?: string): Promise<void> {
+    try {
+      const headers = this.buildAuthHeaders();
+      await firstValueFrom(
+        this.http.post<void>(
+          `${DoctorAppointmentsService.API_BASE_URL}/appointments/${appointmentId}/video-call/propose`,
+          { acceptedDateTime, reason },
+          { headers }
+        )
+      );
+    } catch (error) {
+      throw new Error(this.extractErrorMessage(error, 'Impossible de proposer un autre créneau d’appel vidéo.'));
+    }
+  }
+
+  async getVideoCallStatus(appointmentId: number): Promise<VideoCallStatusResponse> {
+    try {
+      const headers = this.buildAuthHeaders();
+      return await firstValueFrom(
+        this.http.get<VideoCallStatusResponse>(
+          `${DoctorAppointmentsService.API_BASE_URL}/appointments/${appointmentId}/video-call/status`,
+          { headers }
+        )
+      );
+    } catch (error) {
+      throw new Error(this.extractErrorMessage(error, 'Impossible de récupérer le statut de l’appel vidéo.'));
     }
   }
 

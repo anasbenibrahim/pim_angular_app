@@ -190,194 +190,326 @@
     <div class="panel-content">
       <p class="empty" *ngIf="isLoading">Chargement du rapport...</p>
       <div class="report-layout" *ngIf="!isLoading && medicalReport as report">
-        <section class="report-block">
-          <h5>Coordonnées du patient</h5>
-          <ul class="simple-list">
-            <li>
-              <strong>Nom:</strong> {{ patient.name }}
-            </li>
-            <li>
-              <strong>Email:</strong> {{ patient.email }}
-            </li>
-            <li *ngIf="patient.phone">
-              <strong>Téléphone:</strong> {{ patient.phone }}
-            </li>
-            <li>
-              <strong>Rendez-vous acceptés:</strong> {{ patient.acceptedCount }}
-            </li>
-          </ul>
+        <section class="report-block emotion-evolution">
+          <div class="emotion-head">
+            <h5>Évolution émotionnelle</h5>
+            <span class="emotion-trend">{{ sentimentTrendLabel }}</span>
+          </div>
+
+          <div class="emotion-stats">
+            <span>Points: {{ latestSentimentHistory.length }}</span>
+            <span>HIGH: {{ highSentimentCount }}</span>
+          </div>
+
+          <div class="emotion-list" *ngIf="latestSentimentHistory.length > 0; else noSentimentHistoryInReport">
+            <div class="emotion-item" *ngFor="let item of latestSentimentHistory">
+              <div class="emotion-row">
+                <span class="emotion-time">{{ item.createdAt | date:'dd/MM HH:mm' }}</span>
+                <span class="severity-badge" [ngClass]="severityClass(item.severity)">
+                  {{ severityEmoji(item.severity) }} {{ item.severity }}
+                </span>
+              </div>
+
+              <div class="emotion-row emotion-main">
+                <span class="emotion-label">{{ emotionLabel(item.emotion) }}</span>
+                <span class="emotion-score">{{ formatSentimentScore(item.score) }}</span>
+              </div>
+
+              <div class="emotion-bar-track">
+                <div class="emotion-bar-fill" [style.width.%]="sentimentBarWidth(item.score)"></div>
+              </div>
+
+              <p class="emotion-rec">{{ item.recommendation }}</p>
+            </div>
+          </div>
+
+          <ng-template #noSentimentHistoryInReport>
+            <p class="empty">Aucune analyse émotionnelle disponible pour ce patient.</p>
+          </ng-template>
+        </section>
+
+        <section class="report-block ai-assistant">
+          <header class="report-block-header">
+            <h5>Assistant Clinique IA</h5>
+            <p>Modules IA locaux basés sur Ollama et des règles cliniques pour un assistant sécurisé et sans dépendances payantes.</p>
+          </header>
+
+          <div class="ai-module-tabs">
+            <button type="button" [class.active]="activeAiModule === 'diagnosis'" (click)="setActiveAiModule('diagnosis')">Diagnostic</button>
+            <button type="button" [class.active]="activeAiModule === 'urgency'" (click)="setActiveAiModule('urgency')">Urgence</button>
+            <button type="button" [class.active]="activeAiModule === 'compliance'" (click)="setActiveAiModule('compliance')">Conformité</button>
+            <button type="button" [class.active]="activeAiModule === 'summary'" (click)="setActiveAiModule('summary')">Résumé patient</button>
+            <button type="button" [class.active]="activeAiModule === 'chatbot'" (click)="setActiveAiModule('chatbot')">Chatbot</button>
+          </div>
+
+          <section *ngIf="activeAiModule === 'diagnosis'" class="ai-module-panel">
+            <div class="form-group">
+              <label>
+                Symptômes clés
+                <textarea
+                  rows="3"
+                  [(ngModel)]="aiDiagnosisSymptoms"
+                  placeholder="Douleur thoracique, toux sèche, fièvre, fatigue..."
+                ></textarea>
+              </label>
+            </div>
+
+            <div class="two-col">
+              <label>
+                Âge
+                <input type="text" [(ngModel)]="aiDiagnosisAge" placeholder="45" />
+              </label>
+              <label>
+                Genre
+                <select [(ngModel)]="aiDiagnosisGender">
+                  <option value="UNKNOWN">Non renseigné</option>
+                  <option value="FEMALE">Femme</option>
+                  <option value="MALE">Homme</option>
+                  <option value="OTHER">Autre</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label>
+                Antécédents / contexte clinique
+                <textarea
+                  rows="2"
+                  [(ngModel)]="aiDiagnosisHistory"
+                  placeholder="Asthme, hypertension, allergie pénicilline..."
+                ></textarea>
+              </label>
+            </div>
+
+            <div class="inline-actions">
+              <button type="button" class="primary-btn" (click)="generateAiDiagnosis()" [disabled]="aiDiagnosisLoading">
+                {{ aiDiagnosisLoading ? 'Génération en cours...' : 'Générer suggestions IA' }}
+              </button>
+            </div>
+
+            <section *ngIf="aiDiagnosisError" class="message error">
+              {{ aiDiagnosisError }}
+            </section>
+
+            <section *ngIf="aiDiagnosisResult" class="ai-results">
+              <p class="disclaimer">{{ aiDiagnosisResult.disclaimer }}</p>
+              <ul class="simple-list">
+                <li *ngFor="let suggestion of aiDiagnosisResult.diagnoses">
+                  <strong>{{ suggestion.diagnosis }} ({{ suggestion.probability * 100 | number:'1.0-0' }}%)</strong>
+                  <p *ngIf="suggestion.icd11Code">ICD-11: {{ suggestion.icd11Code }}</p>
+                  <p *ngIf="suggestion.evidence.length">Preuves: {{ suggestion.evidence.join(', ') }}</p>
+                  <p *ngIf="suggestion.tests.length">Tests recommandés: {{ suggestion.tests.join(', ') }}</p>
+                </li>
+              </ul>
+            </section>
+          </section>
+
+          <section *ngIf="activeAiModule === 'urgency'" class="ai-module-panel">
+            <div class="form-group">
+              <label>
+                Message clinique
+                <textarea
+                  rows="4"
+                  [(ngModel)]="urgencyMessage"
+                  placeholder="Écrire un message patient/clinique pour évaluer l’urgence..."
+                ></textarea>
+              </label>
+            </div>
+
+            <div class="inline-actions">
+              <button type="button" class="primary-btn" (click)="analyzeUrgency()" [disabled]="urgencyLoading">
+                {{ urgencyLoading ? 'Analyse en cours...' : 'Analyser l’urgence' }}
+              </button>
+            </div>
+
+            <section *ngIf="urgencyError" class="message error">
+              {{ urgencyError }}
+            </section>
+
+            <section *ngIf="urgencyResult" class="ai-results">
+              <p><strong>Urgence :</strong> {{ urgencyResult.urgencyLevel }}</p>
+              <p><strong>Confiance :</strong> {{ urgencyResult.confidence * 100 | number:'1.0-0' }}%</p>
+              <p><strong>Action recommandée :</strong> {{ urgencyResult.recommendedAction }}</p>
+              <p><strong>Raisonnement :</strong> {{ urgencyResult.reasoning }}</p>
+              <p *ngIf="urgencyResult.triggeredKeywords.length">Mots-clés détectés : {{ urgencyResult.triggeredKeywords.join(', ') }}</p>
+            </section>
+          </section>
+
+          <section *ngIf="activeAiModule === 'compliance'" class="ai-module-panel">
+            <div class="two-col">
+              <label>
+                Jours sans message
+                <input type="number" [(ngModel)]="complianceDaysSinceLastMessage" min="0" />
+              </label>
+              <label>
+                Rendez-vous manqués
+                <input type="number" [(ngModel)]="complianceMissedAppointments" min="0" />
+              </label>
+            </div>
+            <div class="two-col">
+              <label>
+                Visites à domicile manquées
+                <input type="number" [(ngModel)]="complianceMissedHomeVisits" min="0" />
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label>
+                Messages récents du patient
+                <textarea
+                  rows="4"
+                  [(ngModel)]="complianceRecentMessages"
+                  placeholder="Chaque ligne correspond à un message récent du patient..."
+                ></textarea>
+              </label>
+            </div>
+
+            <div class="inline-actions">
+              <button type="button" class="primary-btn" (click)="predictCompliance()" [disabled]="complianceLoading">
+                {{ complianceLoading ? 'Analyse en cours...' : 'Prédire la conformité' }}
+              </button>
+            </div>
+
+            <section *ngIf="complianceError" class="message error">
+              {{ complianceError }}
+            </section>
+
+            <section *ngIf="complianceResult" class="ai-results">
+              <p><strong>Niveau de risque :</strong> {{ complianceResult.riskLevel }}</p>
+              <p><strong>Probabilité d’adhérence :</strong> {{ complianceResult.adherenceProbability * 100 | number:'1.0-0' }}%</p>
+              <p><strong>Prochaine évaluation :</strong> {{ complianceResult.nextAssessmentDate | date:'dd/MM/yyyy' }}</p>
+              <div *ngIf="complianceResult.riskFactors.length">
+                <p><strong>Facteurs de risque :</strong></p>
+                <ul class="simple-list">
+                  <li *ngFor="let factor of complianceResult.riskFactors">
+                    {{ factor.description }} ({{ factor.weight * 100 | number:'1.0-0' }}%)
+                  </li>
+                </ul>
+              </div>
+              <div *ngIf="complianceResult.suggestedInterventions.length">
+                <p><strong>Interventions suggérées :</strong></p>
+                <ul class="simple-list">
+                  <li *ngFor="let intervention of complianceResult.suggestedInterventions">
+                    {{ intervention.description }} ({{ intervention.priority }})
+                  </li>
+                </ul>
+              </div>
+            </section>
+          </section>
+
+          <section *ngIf="activeAiModule === 'summary'" class="ai-module-panel">
+            <div class="two-col">
+              <label>
+                Âge du patient
+                <input type="number" [(ngModel)]="summaryAge" placeholder="45" min="0" />
+              </label>
+            </div>
+            <div class="form-group">
+              <label>
+                Conditions médicales
+                <textarea
+                  rows="3"
+                  [(ngModel)]="summaryConditions"
+                  placeholder="Hypertension, diabète de type 2, asthme..."
+                ></textarea>
+              </label>
+            </div>
+            <div class="form-group">
+              <label>
+                Médicaments actuels
+                <textarea
+                  rows="2"
+                  [(ngModel)]="summaryMedications"
+                  placeholder="Metformine, inhalateur de secours..."
+                ></textarea>
+              </label>
+            </div>
+            <div class="form-group">
+              <label>
+                Problèmes récents
+                <textarea
+                  rows="3"
+                  [(ngModel)]="summaryRecentIssues"
+                  placeholder="Épisodes de douleur, hospitalisations, complications récentes..."
+                ></textarea>
+              </label>
+            </div>
+            <div class="inline-actions">
+              <button type="button" class="primary-btn" (click)="generateSummary()" [disabled]="summaryLoading">
+                {{ summaryLoading ? 'Génération en cours...' : 'Générer le résumé patient' }}
+              </button>
+            </div>
+
+            <section *ngIf="summaryError" class="message error">
+              {{ summaryError }}
+            </section>
+
+            <section *ngIf="summaryResult" class="ai-results">
+              <p><strong>Résumé généré le :</strong> {{ summaryResult.generatedAt | date:'dd/MM/yyyy HH:mm' }}</p>
+              <p><strong>Longueur :</strong> {{ summaryResult.wordCount }} mots</p>
+              <div class="ai-summary">
+                <p>{{ summaryResult.summary }}</p>
+              </div>
+            </section>
+          </section>
+
+          <section *ngIf="activeAiModule === 'chatbot'" class="ai-module-panel">
+            <div class="chatbot-history">
+              <div *ngFor="let entry of chatbotHistory" class="chatbot-message" [ngClass]="entry.role">
+                <span class="chatbot-meta">{{ entry.role === 'user' ? 'Vous' : 'Assistant' }} · {{ entry.timestamp }}</span>
+                <p>{{ entry.text }}</p>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>
+                Message pour le chatbot
+                <textarea
+                  rows="3"
+                  [(ngModel)]="chatbotMessage"
+                  placeholder="Posez une question au patient IA ou demandez de l'aide clinique..."
+                ></textarea>
+              </label>
+            </div>
+
+            <div class="inline-actions">
+              <button type="button" class="primary-btn" (click)="sendChatbotMessage()" [disabled]="chatbotLoading">
+                {{ chatbotLoading ? 'En cours...' : 'Envoyer au chatbot IA' }}
+              </button>
+            </div>
+
+            <section *ngIf="chatbotError" class="message error">
+              {{ chatbotError }}
+            </section>
+            <section *ngIf="chatbotHistory.length && activeAiModule === 'chatbot'" class="ai-results">
+              <p *ngIf="chatbotHistory[chatbotHistory.length - 1]?.text">
+                <strong>Dernière réponse :</strong> {{ chatbotHistory[chatbotHistory.length - 1].text }}
+              </p>
+            </section>
+          </section>
         </section>
 
         <section class="report-block">
-          <h5>Synthèse</h5>
-          <p>{{ report.clinicianSummary }}</p>
-        </section>
-
-        <section class="report-block">
-          <h5>Plan de soin complet</h5>
-          <ul class="simple-list" *ngIf="patientCarePlans.length > 0; else noCarePlans">
+          <h5>Plan de soin du patient</h5>
+          <ul class="simple-list" *ngIf="patientCarePlans.length > 0; else noCarePlansInReport">
             <li *ngFor="let plan of patientCarePlans">
               <strong>{{ plan.title }}</strong>
               <small>
                 {{ plan.weekStartDate | date:'dd/MM/yyyy' }} → {{ plan.weekEndDate | date:'dd/MM/yyyy' }}
                 · {{ carePlanStatusLabel(plan.status) }}
               </small>
-              <ul class="simple-list" *ngIf="plan.items.length > 0; else noCarePlanItems">
+              <ul class="simple-list" *ngIf="plan.items.length > 0">
                 <li *ngFor="let item of plan.items">
                   <strong>{{ item.itemType }} · {{ item.title }}</strong>
                   <p *ngIf="item.details">{{ item.details }}</p>
                   <small *ngIf="item.dueAt">Échéance: {{ formatDateTime(item.dueAt) }}</small>
-                  <small>
-                    Statut: {{ item.completed ? 'Terminée' : 'En cours' }}
-                  </small>
+                  <small>Statut: {{ item.completed ? 'Terminée' : 'En cours' }}</small>
                 </li>
               </ul>
-              <ng-template #noCarePlanItems>
-                <p class="empty">Aucun élément détaillé dans ce plan.</p>
-              </ng-template>
             </li>
           </ul>
-          <ng-template #noCarePlans>
+          <ng-template #noCarePlansInReport>
             <p class="empty">Aucun plan de soin disponible.</p>
-          </ng-template>
-        </section>
-
-        <section class="report-block">
-          <h5>Rendez-vous du patient</h5>
-          <ul class="simple-list" *ngIf="report.sharedCarePlan.appointments.length > 0; else noSharedAppointments">
-            <li *ngFor="let appointment of report.sharedCarePlan.appointments">
-              <div class="draft-head">
-                <strong>{{ formatDateTime(appointment.appointmentDateTime) }}</strong>
-                <div class="inline-actions">
-                  <button
-                    type="button"
-                    class="text-btn"
-                    (click)="addNotesForAppointment(appointment.id, appointment.consultationSummary)"
-                    [disabled]="isSubmitting"
-                  >
-                    Ajouter notes
-                  </button>
-                  <button
-                    type="button"
-                    class="text-btn"
-                    (click)="deleteReportAppointment(appointment.id)"
-                    [disabled]="isSubmitting"
-                  >
-                    Supprimer
-                  </button>
-                </div>
-              </div>
-              <p>{{ sharedVisitTypeLabel(appointment.visitType) }} · {{ appointmentStatusLabel(appointment.status) }}</p>
-              <p>{{ appointment.reason }}</p>
-              <small *ngIf="appointment.behavioralPrescription">
-                Ordonnance: {{ appointment.behavioralPrescription }}
-              </small>
-            </li>
-          </ul>
-          <ng-template #noSharedAppointments>
-            <p class="empty">Aucun rendez-vous dans le rapport.</p>
-          </ng-template>
-        </section>
-
-        <section class="report-block">
-          <h5>Check-ins intelligents</h5>
-          <ul class="simple-list" *ngIf="report.checkIns && report.checkIns.length > 0; else noCheckIns">
-            <li *ngFor="let checkin of report.checkIns">
-              <div class="draft-head">
-                <strong>Date: {{ checkin.checkInDate | date:'dd/MM/yyyy' }}</strong>
-                <span [ngStyle]="{'color': checkin.riskLevel === 'CRITICAL' ? 'red' : checkin.riskLevel === 'HIGH' ? 'orange' : 'inherit'}">
-                  Risque: {{ checkin.riskLevel }} ({{ checkin.riskScore | number:'1.0-2' }}%)
-                </span>
-              </div>
-              <ul class="simple-list">
-                <li>Motivation: {{ checkin.motivationScore }}/5 
-                  | Humeur: {{ checkin.moodScore }}/5 
-                  | Symptômes: {{ checkin.symptomScore }}/5 
-                  | Envies: {{ checkin.cravingScore }}/5</li>
-              </ul>
-              <p *ngIf="checkin.notes"><strong>Notes: </strong>{{ checkin.notes }}</p>
-            </li>
-          </ul>
-          <ng-template #noCheckIns>
-            <p class="empty">Aucun check-in disponible.</p>
-          </ng-template>
-        </section>
-
-        <section class="report-block">
-          <h5>Analyses de la Messagerie (via Hugging Face)</h5>
-          <ul class="simple-list" *ngIf="report.messageInsights && report.messageInsights.length > 0; else noInsights">
-            <li *ngFor="let insight of report.messageInsights">
-              <div class="draft-head">
-                <strong>Contexte détecté : {{ insight.context }}</strong>
-                <span class="badge">{{ insight.count }} message(s)</span>
-              </div>
-              <p>{{ insight.interpretation }}</p>
-              <small *ngIf="insight.lastDetectedAt">Dernière détection : {{ formatDateTime(insight.lastDetectedAt) }}</small>
-            </li>
-          </ul>
-          <ng-template #noInsights>
-            <p class="empty">Aucune analyse Hugging Face générée pour l'instant.</p>
-          </ng-template>
-        </section>
-
-        <section class="report-block">
-          <h5>Recommandations</h5>
-          <ul class="simple-list" *ngIf="report.recommendations.length > 0; else noRecommendations">
-            <li *ngFor="let recommendation of report.recommendations">{{ recommendation }}</li>
-          </ul>
-          <ng-template #noRecommendations>
-            <p class="empty">Aucune recommandation disponible.</p>
-          </ng-template>
-        </section>
-
-        <section class="report-block">
-          <h5>Consultations</h5>
-          <ul class="simple-list" *ngIf="report.consultationNotes.length > 0; else noConsultations">
-            <li *ngFor="let consultation of report.consultationNotes">
-              <div class="draft-head">
-                <strong>{{ formatDateTime(consultation.appointmentDateTime) }}</strong>
-                <button
-                  type="button"
-                  class="text-btn"
-                  (click)="deleteReportConsultation(consultation.consultationNoteId)"
-                  [disabled]="isSubmitting"
-                >
-                  Supprimer
-                </button>
-              </div>
-              <p>{{ consultation.consultationSummary }}</p>
-              <small *ngIf="consultation.behavioralPrescription">
-                Ordonnance: {{ consultation.behavioralPrescription }}
-              </small>
-            </li>
-          </ul>
-          <ng-template #noConsultations>
-            <p class="empty">Aucune consultation enregistrée.</p>
-          </ng-template>
-        </section>
-
-        <section class="report-block">
-          <h5>Tâches du patient</h5>
-          <ul class="simple-list" *ngIf="report.sharedCarePlan.tasks.length > 0; else noTasks">
-            <li *ngFor="let task of report.sharedCarePlan.tasks">
-              <div class="draft-head">
-                <strong>{{ task.title }}</strong>
-                <button
-                  type="button"
-                  class="text-btn"
-                  (click)="deleteReportTask(task.id)"
-                  [disabled]="isSubmitting"
-                >
-                  Supprimer
-                </button>
-              </div>
-              <p *ngIf="task.description">{{ task.description }}</p>
-              <small>Statut: {{ taskStatusLabel(task.status) }}</small>
-              <small *ngIf="task.dueAt">Échéance: {{ formatDateTime(task.dueAt) }}</small>
-            </li>
-          </ul>
-          <ng-template #noTasks>
-            <p class="empty">Aucune tâche disponible dans le rapport.</p>
           </ng-template>
         </section>
       </div>

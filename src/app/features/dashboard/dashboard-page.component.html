@@ -1,159 +1,69 @@
-<section class="dashboard-shell" [class.collapsed]="sidebarCollapsed">
-  <!-- ======== SIDEBAR ======== -->
-  <aside class="sidebar">
-    <!-- Logo area -->
-    <header class="sidebar-brand">
-      <div class="logo-container">
-        <div class="logo-icon">
-          <i class="ri-flashlight-fill"></i>
-        </div>
-        <span class="logo-text" *ngIf="!sidebarCollapsed">HOPEUP</span>
-      </div>
-      <button class="hamburger-btn" (click)="toggleSidebar()" aria-label="Toggle sidebar">
-        <i [class]="sidebarCollapsed ? 'ri-arrow-right-s-line' : 'ri-menu-line'"></i>
-      </button>
-    </header>
-
-    <!-- User profile -->
-    <div class="sidebar-profile" *ngIf="!sidebarCollapsed">
-      <div class="profile-avatar">
-        <span>{{ userInitials }}</span>
-      </div>
-      <div class="profile-info">
-        <p class="profile-greeting">Hello, <strong>{{ displayName }}</strong></p>
-        <small class="profile-email">{{ userEmail }}</small>
-      </div>
-    </div>
-    <div class="sidebar-profile-mini" *ngIf="sidebarCollapsed">
-      <div class="profile-avatar mini">
-        <span>{{ userInitials }}</span>
-      </div>
-    </div>
-
-    <!-- Navigation -->
-    <nav class="sidebar-nav">
+<div class="app-layout" [class.dark-mode]="isDark">
+  <!-- Top Navigation Bar -->
+  <header class="top-navbar">
+    <nav class="nav-links">
       <button type="button" *ngFor="let section of visibleSections" class="nav-item"
-        [class.active]="activeSection === section.key" (click)="selectSection(section.key)"
-        [attr.title]="sidebarCollapsed ? section.title : null">
-        <div class="nav-indicator"></div>
-        <i [class]="section.icon"></i>
-        <span class="nav-label" *ngIf="!sidebarCollapsed">{{ section.title }}</span>
+        [class.active]="activeSection === section.key" (click)="selectSection(section.key)">
+        {{ section.title }}
       </button>
     </nav>
-
-    <!-- Bottom links -->
-    <div class="sidebar-bottom">
-      <button type="button" class="nav-item" (click)="openProfile()"
-        [attr.title]="sidebarCollapsed ? 'Profil' : null">
-        <div class="nav-indicator"></div>
-        <i class="ri-user-settings-line"></i>
-        <span class="nav-label" *ngIf="!sidebarCollapsed">Profil</span>
+    <div class="nav-right">
+      <!-- Mail / Messages -->
+      <button type="button" class="icon-btn" (click)="selectSection('clinical-messaging')">
+        <i class="ri-mail-line"></i>
       </button>
-      <button type="button" class="nav-item" (click)="toggleTheme()"
-        [attr.title]="sidebarCollapsed ? 'Changer le thème' : null">
-        <div class="nav-indicator"></div>
+      
+      <!-- Notifications -->
+      <div class="notification-wrapper" *ngIf="role === 'admin'">
+        <button type="button" class="icon-btn" (click)="toggleNotifications()">
+          <i class="ri-notification-3-line"></i>
+          <span class="badge" *ngIf="notificationCount > 0"></span>
+        </button>
+        <!-- Notification Dropdown -->
+        <div class="notification-dropdown" *ngIf="showNotifications">
+          <div class="dropdown-header">
+            <strong>Notifications</strong>
+            <button type="button" class="link-btn-sm" (click)="selectSection('volunteers')">Voir demandes</button>
+          </div>
+          <div class="dropdown-state" *ngIf="notificationsLoading">Chargement...</div>
+          <div class="dropdown-state error" *ngIf="!notificationsLoading && notificationsError">{{ notificationsError }}</div>
+          <div class="dropdown-state" *ngIf="!notificationsLoading && !notificationsError && notifications.length === 0">
+            Aucune notification récente
+          </div>
+          <div class="dropdown-item" *ngFor="let n of notifications">
+            <div class="dropdown-icon" [ngClass]="n.color">
+              <i [class]="n.icon"></i>
+            </div>
+            <div class="dropdown-content">
+              <p>{{ n.title }}</p>
+              <small>{{ n.time }}</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile -->
+      <div class="profile-info" (click)="openProfile()" style="cursor: pointer;">
+        <div class="avatar">{{ userInitials }}</div>
+        <div class="user-details">
+          <span class="role-text">{{ role }}</span>
+          <span class="name-text">{{ displayName }}</span>
+        </div>
+      </div>
+      
+      <!-- Theme & Logout -->
+      <button type="button" class="icon-btn small-btn" (click)="toggleTheme()" title="Toggle Theme">
         <i [class]="isDark ? 'ri-sun-line' : 'ri-moon-line'"></i>
-        <span class="nav-label" *ngIf="!sidebarCollapsed">{{ isDark ? 'Mode clair' : 'Mode sombre' }}</span>
       </button>
-      <button type="button" class="nav-item logout" (click)="logout()"
-        [attr.title]="sidebarCollapsed ? 'Déconnexion' : null">
-        <div class="nav-indicator"></div>
+      <button type="button" class="icon-btn small-btn logout-btn" (click)="logout()" title="Logout">
         <i class="ri-logout-box-r-line"></i>
-        <span class="nav-label" *ngIf="!sidebarCollapsed">Déconnexion</span>
       </button>
     </div>
-  </aside>
+  </header>
 
-  <!-- ======== MAIN CONTENT ======== -->
-  <div class="main-area">
-    <!-- Top Header -->
-    <header class="top-header">
-      <!-- Search -->
-      <div class="search-box">
-        <i class="ri-search-line"></i>
-        <input type="text" placeholder="Find something here...." [(ngModel)]="searchTerm" />
-      </div>
-
-      <!-- Right actions -->
-      <div class="header-actions">
-        <!-- Notification bell -->
-        <div class="notification-wrapper" *ngIf="role === 'admin'">
-          <button type="button" class="action-btn" (click)="toggleNotifications()" aria-label="Notifications">
-            <i class="ri-notification-3-line"></i>
-            <span class="badge-count red" *ngIf="notificationCount > 0">{{ notificationCount }}</span>
-          </button>
-          <!-- Notification dropdown -->
-          <div class="notification-dropdown" *ngIf="showNotifications">
-            <div class="dropdown-header">
-              <strong>Notifications</strong>
-              <button type="button" class="link-btn-sm" (click)="selectSection('volunteers')">Voir demandes</button>
-            </div>
-            <div class="dropdown-state" *ngIf="notificationsLoading">Chargement...</div>
-            <div class="dropdown-state error" *ngIf="!notificationsLoading && notificationsError">{{ notificationsError }}</div>
-            <div class="dropdown-state" *ngIf="!notificationsLoading && !notificationsError && notifications.length === 0">
-              Aucune notification récente
-            </div>
-            <div class="dropdown-item" *ngFor="let n of notifications">
-              <div class="dropdown-icon" [ngClass]="n.color">
-                <i [class]="n.icon"></i>
-              </div>
-              <div class="dropdown-content">
-                <p>{{ n.title }}</p>
-                <small>{{ n.time }}</small>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <!-- Page title bar -->
-    <div class="page-title-bar">
-      <div>
-        <h2>{{ activeConfig.title }}</h2>
-        <p>{{ activeConfig.subtitle }}</p>
-      </div>
-
-      <div class="title-actions">
-        <div class="date-pill">
-          <i class="ri-cloud-line"></i>
-          <span>{{ currentDayLabel }}</span>
-          <span class="location">{{ currentLocationLabel }}</span>
-        </div>
-        <div class="period-filter">
-          <button type="button" class="filter-btn" (click)="togglePeriodFilterMenu()" [class.open]="showPeriodFilterMenu">
-            <i class="ri-filter-3-line"></i>
-            <span>Période: {{ selectedPeriodFilterOption.shortLabel }}</span>
-            <i class="ri-arrow-down-s-line chevron" [class.rotated]="showPeriodFilterMenu"></i>
-          </button>
-
-          <div class="period-filter-menu" *ngIf="showPeriodFilterMenu">
-            <div class="period-filter-header">
-              <strong>Filtre de période</strong>
-              <small>Appliqué aux notifications du header</small>
-            </div>
-            <button
-              type="button"
-              class="period-option"
-              *ngFor="let option of periodFilterOptions"
-              (click)="selectPeriodFilter(option)"
-              [class.active]="selectedPeriodFilter === option.key"
-            >
-              <div class="period-option-main">
-                <span class="period-option-label">{{ option.label }}</span>
-                <span class="period-option-check" *ngIf="selectedPeriodFilter === option.key">
-                  <i class="ri-check-line"></i>
-                </span>
-              </div>
-              <small class="period-option-desc">{{ option.description }}</small>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Content area -->
-    <main class="content-area" [ngSwitch]="activeSection">
+  <!-- Main Content Area -->
+  <div class="global-main-card">
+    <main class="main-content" [ngSwitch]="activeSection">
       <ng-container *ngSwitchCase="'dashboard'">
         <app-dashboard-overview *ngIf="role === 'admin'; else doctorDashboard"></app-dashboard-overview>
         <ng-template #doctorDashboard>
@@ -169,4 +79,4 @@
       <app-live-map *ngSwitchCase="'map'"></app-live-map>
     </main>
   </div>
-</section>
+</div>

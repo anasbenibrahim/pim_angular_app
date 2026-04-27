@@ -1,0 +1,79 @@
+<div class="sync-indicator-container" [class.offline]="!isOnline" [class.online]="isOnline">
+  <!-- Indicateur d'état principal -->
+  <div class="sync-status-badge">
+    <span class="status-icon" [class.online-icon]="isOnline" [class.offline-icon]="!isOnline">
+      {{ isOnline ? '🟢' : '🔴' }}
+    </span>
+    <span class="status-text">
+      {{ isOnline ? 'En ligne' : 'Mode hors ligne' }}
+    </span>
+
+    <!-- Indicateur de synchronisation -->
+    <span class="sync-info" *ngIf="!isOnline || isSyncing">
+      {{ pendingRequests.length > 0 ? `(${pendingRequests.length} en attente)` : '' }}
+    </span>
+  </div>
+
+  <!-- Barre de progression de synchro -->
+  <div class="sync-progress" *ngIf="isSyncing">
+    <div class="progress-bar">
+      <div class="progress-fill" [style.width.%]="syncPercentage"></div>
+    </div>
+    <span class="progress-text">
+      Synchronisation: {{ syncProgress.completed }}/{{ syncProgress.total }}
+    </span>
+  </div>
+
+  <!-- Bouton d'expansion de la queue -->
+  <button
+    class="toggle-queue-btn"
+    (click)="toggleQueue()"
+    *ngIf="pendingRequests.length > 0"
+    [title]="showQueue ? 'Masquer la queue' : 'Afficher la queue'"
+    type="button">
+    {{ showQueue ? '▼' : '▶' }} Queue ({{ pendingRequests.length }})
+  </button>
+
+  <!-- Liste des requêtes en attente -->
+  <div class="queue-container" *ngIf="showQueue && pendingRequests.length > 0">
+    <div class="queue-header">
+      <h4>Requêtes hors ligne en attente</h4>
+      <button class="clear-btn" (click)="clearQueue()" type="button" title="Vider la queue">🗑️</button>
+    </div>
+
+    <div class="queue-list">
+      <div class="queue-item" *ngFor="let request of pendingRequests; trackBy: trackByRequestId">
+        <div class="request-info">
+          <span class="method-icon">{{ getMethodIcon(request.method) }}</span>
+          <span class="method">{{ request.method }}</span>
+          <span class="url-text" [title]="request.url">{{ formatUrl(request.url) }}</span>
+        </div>
+        <div class="request-meta">
+          <span class="retry-count" *ngIf="request.retryCount > 0">
+            R{{ request.retryCount }}
+          </span>
+          <span class="timestamp">
+            {{ (request.timestamp | date: 'short') }}
+          </span>
+          <button
+            class="remove-btn"
+            (click)="removeFromQueue(request.id)"
+            title="Retirer de la queue"
+            type="button">
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="queue-actions">
+      <button
+        class="sync-btn"
+        (click)="forceSync()"
+        [disabled]="!isOnline"
+        type="button">
+        ⚡ Synchroniser maintenant
+      </button>
+    </div>
+  </div>
+</div>

@@ -4,26 +4,12 @@
 
   <section class="chat-shell panel">
     <aside class="patient-list">
+      <div class="list-header">
+        <h3>Conversation</h3>
+      </div>
+
       <div class="search-wrap">
-        <input type="text" [(ngModel)]="searchTerm" placeholder="Search your patient name, or chat" />
-      </div>
-
-      <div class="avatar-strip" *ngIf="filteredPatients.length > 0">
-        <button
-          type="button"
-          class="avatar-chip"
-          *ngFor="let patient of filteredPatients | slice:0:4"
-          [class.active]="selectedPatientId === patient.patientId"
-          (click)="selectPatient(patient.patientId)"
-        >
-          <span>{{ patientInitials(patient.patientName) || 'P' }}</span>
-          <small>{{ patient.patientName.split(' ')[0] }}</small>
-        </button>
-      </div>
-
-      <div class="chats-title-row">
-        <h3>Chats</h3>
-        <button type="button" class="refresh-btn" (click)="loadAcceptedPatients()" [disabled]="isPatientsLoading">↻</button>
+        <input type="text" [(ngModel)]="searchTerm" placeholder="Search" />
       </div>
 
       <div class="patient-list-body" *ngIf="!isPatientsLoading; else loadingPatientsState">
@@ -34,24 +20,26 @@
           [class.active]="selectedPatientId === patient.patientId"
           (click)="selectPatient(patient.patientId)"
         >
-          <div class="avatar">{{ patientInitials(patient.patientName) || 'P' }}</div>
+          <div class="avatar" [class.online]="true">{{ patientInitials(patient.patientName) || 'P' }}</div>
           <div class="item-content">
             <div class="line-top">
               <strong>{{ patient.patientName }}</strong>
               <small>{{ formatTime(patient.lastAppointmentDateTime) }}</small>
             </div>
-            <div class="line-bottom">{{ patient.lastReason }}</div>
+            <div class="line-bottom">
+              <span *ngIf="patient.lastReason">{{ patient.lastReason }}</span>
+              <span *ngIf="!patient.lastReason">Nouvelle conversation...</span>
+            </div>
           </div>
-          <span class="counter">{{ patient.appointmentCount }}</span>
         </button>
 
         <div class="empty" *ngIf="filteredPatients.length === 0">
-          Aucun patient accepté pour le moment.
+          No conversations found.
         </div>
       </div>
 
       <ng-template #loadingPatientsState>
-        <div class="loading">Chargement des patients...</div>
+        <div class="loading">Loading...</div>
       </ng-template>
     </aside>
 
@@ -61,31 +49,62 @@
           <div class="avatar header-avatar">{{ patientInitials(activePatient.patientName) || 'P' }}</div>
           <div>
             <h4>{{ activePatient.patientName }}</h4>
-            <small>Online</small>
+            <small>Online · {{ sentimentTrendLabel }}</small>
           </div>
         </div>
         <div class="header-actions">
-          <button type="button" class="action-btn" (click)="togglePushNotifications()">
-            {{ pushEnabled ? '🔔' : '🔕' }}
+          <button type="button" class="action-btn" title="Search"><i class="ri-search-line"></i></button>
+          <button type="button" class="action-btn" title="Push Notifications" (click)="togglePushNotifications()">
+            <i [class]="pushEnabled ? 'ri-notification-3-fill' : 'ri-notification-off-line'"></i>
           </button>
-          <button type="button" class="action-btn" (click)="markAllPushNotificationsAsRead()">👁️</button>
+          <button type="button" class="action-btn" *ngIf="activeVideoCall" (click)="joinActiveVideoCall()" title="Join Active Video Call">
+            <i class="ri-vidicon-fill" style="color: #22c55e;"></i>
+          </button>
+          <button type="button" class="action-btn" title="More options" (click)="markAllPushNotificationsAsRead()">
+            <i class="ri-more-2-fill"></i>
+          </button>
         </div>
       </header>
 
-      <div class="push-banner" *ngIf="pushEnabled">
-        <span>Notifications push: {{ unreadNotificationCount }} non lue(s)</span>
+      <!-- Active Video Call Banner (Doctor) -->
+      <div class="video-active-banner" *ngIf="activeVideoCall">
+        <div class="video-active-info">
+          <i class="ri-vidicon-fill" style="font-size: 1.2rem;"></i>
+          <span>Appel vidéo en cours — {{ activeVideoCall.scheduledAt | date:'dd/MM HH:mm' }}</span>
+        </div>
+        <button type="button" class="join-call-btn" (click)="joinActiveVideoCall()">
+          Rejoindre l'appel
+        </button>
+      </div>
+
+      <!-- Push Notifications Banner -->
+      <div class="push-banner flat-banner" *ngIf="pushEnabled && unreadNotificationCount > 0">
+        <span><i class="ri-notification-3-line"></i> Notifications push: {{ unreadNotificationCount }} non lue(s)</span>
         <small *ngIf="latestPushPreview">{{ latestPushPreview }}</small>
       </div>
 
-      <div class="templates-strip">
-        <button
-          type="button"
-          class="template-chip"
-          *ngFor="let suggestion of smartSuggestions"
-          (click)="applyTemplateSuggestion(suggestion)"
-        >
-          {{ suggestion.value }}
-        </button>
+      <!-- Pending Video Call Request Banner -->
+      <div class="video-call-banner flat-banner" *ngIf="pendingVideoCall as videoCall">
+        <div class="video-call-info">
+          <div class="video-call-title"><i class="ri-video-add-line"></i> Demande d'appel vidéo en attente</div>
+          <small class="video-call-meta">Créneau demandé: {{ videoCall.requestedAt | date:'dd/MM/yyyy HH:mm' }}</small>
+          <small class="video-call-reason" *ngIf="videoCall.reason">{{ videoCall.reason }}</small>
+        </div>
+
+        <div class="video-call-accept-row">
+          <input type="datetime-local" [(ngModel)]="acceptVideoCallDateTimeLocal" [disabled]="isSending" title="Laisser vide = maintenant + 30min" />
+          <button type="button" class="banner-btn accept-btn" (click)="acceptPendingVideoCall()" [disabled]="isSending"><i class="ri-check-line"></i> Accepter</button>
+        </div>
+
+        <div class="video-call-reject-row">
+          <input type="text" [(ngModel)]="videoCallDecisionNote" placeholder="Message pour le patient (optionnel)" [disabled]="isSending" />
+          <button type="button" class="banner-btn reject-btn" (click)="rejectPendingVideoCall()" [disabled]="isSending"><i class="ri-close-line"></i> Rejeter</button>
+        </div>
+
+        <div class="video-call-propose-row">
+          <input type="datetime-local" [(ngModel)]="proposedVideoCallDateTimeLocal" [disabled]="isSending" />
+          <button type="button" class="banner-btn propose-btn" (click)="proposeAlternativeVideoCall()" [disabled]="isSending"><i class="ri-calendar-event-line"></i> Proposer un autre créneau</button>
+        </div>
       </div>
 
       <div class="messages-area" *ngIf="!isLoading; else loadingState">
@@ -95,39 +114,57 @@
           <div class="group-avatar" *ngIf="!group.mine">{{ patientInitials(group.senderName) || 'P' }}</div>
 
           <div class="group-bubbles">
-            <div class="message-row" *ngFor="let message of group.items" [class.mine]="group.mine">
-              <div class="bubble">
-                <p>{{ message.content }}</p>
-
-                <ng-container *ngIf="message.attachment as attachment">
-                  <img
-                    *ngIf="attachment.contentType?.startsWith('image/'); else nonImageAttachment"
-                    class="attachment-image"
-                    [src]="attachmentUrl(attachment.url)"
-                    [alt]="attachment.name || 'Image médicale'"
-                    loading="lazy"
-                  />
-
-                  <ng-template #nonImageAttachment>
-                    <a
-                      class="attachment-link"
-                      [href]="attachmentUrl(attachment.url)"
-                      target="_blank"
-                      rel="noopener"
-                    >
-                      📎 {{ attachment.name }}
-                    </a>
-                  </ng-template>
-                </ng-container>
-
-                <div class="meta-row">
-                  <span class="ctx-badge" [ngClass]="contextBadgeClass(message)">{{ contextBadgeLabel(message) }}</span>
-                  <small>{{ message.createdAt | date:'HH:mm' }}</small>
-                  <small class="sent-flag" *ngIf="isMine(message)">
-                    {{ sentIndicator(message) }} {{ sentIndicatorLabel(message) }}
-                  </small>
+            <div
+              class="message-row"
+              *ngFor="let message of group.items"
+              [class.mine]="group.mine"
+            >
+              <!-- Special Video Call Bubble -->
+              <div class="bubble video-bubble" *ngIf="message.templateType?.startsWith('VIDEO_CALL_'); else regularBubble">
+                <i class="ri-vidicon-line video-icon"></i>
+                <div class="video-bubble-body">
+                  <span class="video-bubble-label">{{ getVideoCallLabel(message.templateType) }}</span>
+                  <p>{{ message.content }}</p>
+                  <div class="meta-row">
+                    <small>{{ message.createdAt | date:'EEE, hh:mm a' }}</small>
+                  </div>
                 </div>
               </div>
+
+              <!-- Regular Bubble -->
+              <ng-template #regularBubble>
+                <div class="bubble">
+                  <p>{{ message.content }}</p>
+
+                  <ng-container *ngIf="message.attachment as attachment">
+                    <img *ngIf="attachment.contentType?.startsWith('image/'); else nonImageAttachment"
+                      class="attachment-image" [src]="attachmentUrl(attachment.url)" [alt]="attachment.name || 'Image médicale'" loading="lazy" />
+                    <ng-template #nonImageAttachment>
+                      <a class="attachment-link" [href]="attachmentUrl(attachment.url)" target="_blank" rel="noopener"><i class="ri-attachment-line"></i> {{ attachment.name }}</a>
+                    </ng-template>
+                  </ng-container>
+
+                  <div class="meta-row">
+                    <span class="ctx-badge" [ngClass]="contextBadgeClass(message)">{{ contextBadgeLabel(message) }}</span>
+                    <small class="sent-flag" *ngIf="isMine(message)">
+                      <i [class]="sentIndicator(message)"></i>
+                    </small>
+                    <small>{{ message.createdAt | date:'EEE, hh:mm a' }}</small>
+                  </div>
+
+                  <!-- AI Analysis inline inside bubble -->
+                  <div class="ai-analysis-flat" *ngIf="patientMessageAnalysis(message) as analysis">
+                    <div class="ai-analysis-head">
+                      <span class="severity-badge" [ngClass]="severityClass(analysis.severity)">
+                        <i [class]="severityEmoji(analysis.severity)"></i> {{ analysis.severity }}
+                      </span>
+                      <span class="ai-score">Score: {{ formatSentimentScore(analysis.score) }}</span>
+                    </div>
+                    <div class="ai-line"><strong>Emotion:</strong> {{ analysis.emotion }}</div>
+                    <div class="ai-line"><strong>Recommendation:</strong> {{ analysis.recommendation }}</div>
+                  </div>
+                </div>
+              </ng-template>
             </div>
           </div>
         </div>
@@ -138,16 +175,31 @@
       </div>
 
       <ng-template #loadingState>
-        <div class="loading">Chargement de la conversation...</div>
+        <div class="loading">Loading...</div>
       </ng-template>
 
       <div class="attachment-preview" *ngIf="selectedAttachment">
-        <span>📄 {{ selectedAttachment.name }}</span>
-        <button type="button" (click)="removeAttachment()">Retirer</button>
+        <span><i class="ri-file-text-line"></i> {{ selectedAttachment.name }}</span>
+        <button type="button" (click)="removeAttachment()"><i class="ri-delete-bin-line"></i></button>
+      </div>
+
+      <!-- Smart Suggestions Strip -->
+      <div class="templates-strip flat-templates" *ngIf="smartSuggestions.length > 0 && draftMessage.length > 3">
+        <button type="button" class="template-chip" *ngFor="let suggestion of smartSuggestions" (click)="applyTemplateSuggestion(suggestion)">
+          {{ suggestion.value }}
+        </button>
       </div>
 
       <div class="composer">
-        <label for="doctor-chat-attachment" class="icon-btn" title="Pièce jointe">+</label>
+        <input
+          type="text"
+          [(ngModel)]="draftMessage"
+          placeholder="Type your message"
+          (keyup.enter)="sendMessage()"
+        />
+
+        <button type="button" class="icon-btn" title="Emotions"><i class="ri-emotion-line"></i></button>
+        <label for="doctor-chat-attachment" class="icon-btn" title="Attach"><i class="ri-attachment-line"></i></label>
         <input
           id="doctor-chat-attachment"
           type="file"
@@ -156,23 +208,15 @@
           hidden
         />
 
-        <input
-          type="text"
-          [(ngModel)]="draftMessage"
-          placeholder="Type your unique message"
-          (keyup.enter)="sendMessage()"
-        />
-
-        <button type="button" class="icon-btn" [disabled]="isUploadingAttachment">📎</button>
         <button type="button" class="icon-btn send" [disabled]="!canSend() || isUploadingAttachment" (click)="sendMessage()">
-          {{ isUploadingAttachment ? '…' : '➤' }}
+          <i class="ri-send-plane-2-fill"></i>
         </button>
       </div>
     </section>
 
     <ng-template #emptySelection>
       <section class="chat-pane placeholder">
-        <div class="empty">Choisissez un patient accepté pour ouvrir la conversation.</div>
+        <div class="empty">Select a conversation.</div>
       </section>
     </ng-template>
   </section>

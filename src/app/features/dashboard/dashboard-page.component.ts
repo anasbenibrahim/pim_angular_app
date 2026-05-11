@@ -370,8 +370,10 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.notificationsLoading = true;
-    this.notificationsError = '';
+    window.setTimeout(() => {
+      this.notificationsLoading = true;
+      this.notificationsError = '';
+    });
     try {
       const [users, signups] = await Promise.all([
         this.adminService.getAllUsers(),

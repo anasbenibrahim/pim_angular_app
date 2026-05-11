@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService, RegisterDoctorPayload, RegisterPayload, UserRole } from '../../core/services/auth.service';
@@ -17,6 +17,7 @@ type FeedbackKind = 'success' | 'error' | 'info';
 export class AuthPageComponent implements OnInit, OnDestroy {
   private readonly formBuilder = inject(FormBuilder).nonNullable;
   private readonly themeService = inject(ThemeService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @ViewChild('cameraVideo') private cameraVideo?: ElementRef<HTMLVideoElement>;
   @ViewChild('captureCanvas') private captureCanvas?: ElementRef<HTMLCanvasElement>;
@@ -503,6 +504,7 @@ export class AuthPageComponent implements OnInit, OnDestroy {
       };
     } finally {
       this.isSubmittingRegister = false;
+      this.cdr.detectChanges();
     }
   }
 

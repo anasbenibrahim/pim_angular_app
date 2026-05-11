@@ -1,5 +1,5 @@
 export class ApiConfig {
-  private static readonly DEFAULT_API_BASE_URL = 'http://localhost:8080/api';
+  private static readonly DEFAULT_API_BASE_URL = 'http://localhost:8081/api';
 
   static get apiBaseUrl(): string {
     if (typeof window !== 'undefined') {

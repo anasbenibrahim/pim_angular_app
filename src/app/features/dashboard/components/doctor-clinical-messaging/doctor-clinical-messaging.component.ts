@@ -663,7 +663,7 @@ export class DoctorClinicalMessagingComponent implements OnInit, OnDestroy {
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
-    return `http://localhost:8080${path}`;
+    return `http://localhost:8081${path}`;
   }
 
   private mapContextToTemplate(context: MessageContext): ClinicalMessageTemplate {

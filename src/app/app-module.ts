@@ -10,10 +10,6 @@ import { environment } from '../environments/environment';
 
 import { AppRoutingModule } from './app-routing-module';
 import { App } from './app';
-import { AuthPageComponent } from './features/auth/auth-page.component';
-import { DashboardPageComponent } from './features/dashboard/dashboard-page.component';
-import { GeofencingManagementComponent } from './features/dashboard/components/geofencing-management/geofencing-management.component';
-import { ProfilePageComponent } from './features/profile/profile-page.component';
 import { OfflineInterceptor } from './core/services/offline-interceptor';
 
 @NgModule({
@@ -25,11 +21,7 @@ import { OfflineInterceptor } from './core/services/offline-interceptor';
       enabled: environment.production,
       registrationStrategy: 'registerWhenStable:30000'
     }),
-    App,
-    AuthPageComponent,
-    DashboardPageComponent,
-    ProfilePageComponent,
-    GeofencingManagementComponent
+    App
   ],
   providers: [
     provideBrowserGlobalErrorListeners(),

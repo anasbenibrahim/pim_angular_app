@@ -120,7 +120,7 @@
               [class.mine]="group.mine"
             >
               <!-- Special Video Call Bubble -->
-              <div class="bubble video-bubble" *ngIf="message.templateType?.startsWith('VIDEO_CALL_'); else regularBubble">
+              <div class="bubble video-bubble" *ngIf="message.templateType.startsWith('VIDEO_CALL_'); else regularBubble">
                 <i class="ri-vidicon-line video-icon"></i>
                 <div class="video-bubble-body">
                   <span class="video-bubble-label">{{ getVideoCallLabel(message.templateType) }}</span>

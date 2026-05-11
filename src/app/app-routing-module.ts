@@ -33,10 +33,7 @@ const routes: Routes = [
 
 @NgModule({
   imports: [
-    RouterModule.forRoot(routes),
-    AuthPageComponent,
-    DashboardPageComponent,
-    ProfilePageComponent
+    RouterModule.forRoot(routes)
   ],
   exports: [RouterModule]
 })
